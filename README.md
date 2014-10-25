@@ -5,7 +5,7 @@
 ##Build Requirements
 
 1. Node.js & NPM - [http://nodejs.org/](http://nodejs.org/)
-2. Git
+2. Bower - [http://bower.io/](http://bower.io/)
 
 ##Steps to install
 
