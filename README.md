@@ -5,7 +5,8 @@
 ##Build Requirements
 
 1. Node.js & NPM - [http://nodejs.org/](http://nodejs.org/)
-2. Bower - [http://bower.io/](http://bower.io/)
+2. Run `npm update -g` & `npm cache clear`
+3. Run `npm install -g bower` & `npm install -g grunt-bower-cli`
 
 ##Steps to install
 
