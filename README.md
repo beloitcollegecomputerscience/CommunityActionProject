@@ -6,7 +6,7 @@
 
 1. Node.js & NPM - [http://nodejs.org/](http://nodejs.org/)
 2. Run `npm update -g` & `npm cache clear`
-3. Run `npm install -g bower` & `npm install -g grunt-bower-cli`
+3. Run `npm install -g bower grunt grunt-cli bower-cli`
 
 ##Steps to install
 
