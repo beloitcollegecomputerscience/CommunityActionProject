@@ -7,6 +7,8 @@
 1. Node.js & NPM - [http://nodejs.org/](http://nodejs.org/)
 2. Run `npm update -g` & `npm cache clear`
 3. Run `npm install -g bower grunt grunt-cli bower-cli`
+4. Install git [http://git-scm.com/downloads] 
+5. If you are on Windows during the install check yes to command line UNIX commands and GIT, it will make your life much easier.
 
 ##Steps to install
 
