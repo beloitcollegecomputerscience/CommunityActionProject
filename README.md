@@ -7,7 +7,7 @@
 1. Install git [http://git-scm.com/downloads]
 2. Node.js & NPM - [http://nodejs.org/](http://nodejs.org/)
 3. Run `$ npm update -g` & `npm cache clear`
-4. Run `$ npm install -g bower grunt grunt-bower-cli`
+4. Run `$ npm install -g bower grunt grunt-bower-cli grunt-cli`
     * If you are getting an EACCESS error try running the commands as root admin by putting `sudo` infront of the above commands 
 5. If you are on Windows during the install check yes to command line UNIX commands and GIT, it will make your life much easier.
 
