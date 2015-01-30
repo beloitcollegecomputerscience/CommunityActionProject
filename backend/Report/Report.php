@@ -12,18 +12,27 @@ class Report extends PluginBase {
 		$this->subscribe('beforeActivate');
 		$this->subscribe('afterAdminMenuLoad');
 		$this->subscribe('newDirectRequest');
+		$this->subscribe('newSurveySettings');
 	}
 
 	/**
 	 * Runs when plugin is activated creates all the necesarry tables to support
 	 * Commmunity Action Reporting Plugin
+	 * TODO: Additional SQL fragments can be passed in as an $options parameter
+	 *  		 to createTable() Tie to Survey and program tables here?
 	 **/
 	public function beforeActivate() {
-		// Create CA_Programs table if not created yet
-		if (!$this->api->tableExists($this, 'CA_Programs')) {
-			$this->api->createTable($this, 'CA_Programs', array(
+		// Create CA_Programs table if not created yaml_emit(data)
+		if (!$this->api->tableExists($this, 'programs')) {
+			$this->api->createTable($this, 'programs', array(
 				'id' => 'pk',
 				'programName' => 'string'));
+		}
+
+		if (!$this->api->tableExists($this, 'program_enrollement')) {
+			$this->api->createTable($this, 'program_enrollement', array(
+				'sid' => 'pk',
+				'pid' => 'string'));
 		}
 
 		// Display Welcome Message to User
