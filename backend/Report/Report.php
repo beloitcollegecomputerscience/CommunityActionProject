@@ -72,7 +72,7 @@ class Report extends PluginBase {
 	 * Defines the content on the report page
 	 **/
 	function showReports() {
-		$content = "<h1> Here is where we will show the results!! </h1>";
+		$content = "<h1> Here is where we will show the results O_O!!</h1>";
 		return $content;
 	}
 
@@ -80,10 +80,13 @@ class Report extends PluginBase {
 	 * On survey creation this should eventually save SID with PID
 	 **/
 	public function newSurveySettings() {
-		// $event = $this->getEvent();
-		// foreach ($event->get('settings') as $name => $value) {
-		// 	$this->set($name, $value, 'Survey', $event->get('survey'));
-		// }
+		$event = $this->getEvent();
+		$iSurveyID = $event->get('iSurveyID');
+		$this->set('sid', $iSurveyID);
+		$this->pluginManager->getAPI()->setFlash($iSurveyID);
+		foreach ($event->get('settings') as $name => $value) {
+			$this->set($name, $value, 'Survey', $event->get('survey'));
+		}
 	}
 
 }
