@@ -22,13 +22,14 @@ class Report extends PluginBase {
 	 *  		 to createTable() Tie to Survey and program tables here?
 	 **/
 	public function beforeActivate() {
-		// Create CA_Programs table if not created yaml_emit(data)
+		// Create CA_programs table if not created
 		if (!$this->api->tableExists($this, 'programs')) {
 			$this->api->createTable($this, 'programs', array(
 				'id' => 'pk',
 				'programName' => 'string'));
 		}
 
+		// Create CA_program_enrollement
 		if (!$this->api->tableExists($this, 'program_enrollement')) {
 			$this->api->createTable($this, 'program_enrollement', array(
 				'sid' => 'pk',
