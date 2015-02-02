@@ -12,6 +12,7 @@ class Report extends PluginBase {
 		$this->subscribe('beforeActivate');
 		$this->subscribe('afterAdminMenuLoad');
 		$this->subscribe('newDirectRequest');
+		$this->subscribe('beforeSurveySettings');
 		$this->subscribe('newSurveySettings');
 	}
 
@@ -78,13 +79,27 @@ class Report extends PluginBase {
 	}
 
 	/**
-	 * On survey creation this should eventually save SID with PID
+	 * Add extra tab for aditional settings for a survey. Allows survey
+	 * creator to associate a survey with a Community Action program.
 	 **/
+	public function beforeSurveySettings() {
+		$event = $this->getEvent();
+		$event->set("surveysettings.{$this->id}", array(
+			'name' => get_class($this),
+			'settings' => array(
+				'program' => array(
+					// Right now string. Could use label type and pass array of existing programs.
+					'type' => 'string',
+					'default' => 'No Program',
+					'label' => 'Select Program',
+					'current' => $this->get('program', 'Survey', $event->get('survey')),
+				),
+			),
+		));
+	}
+
 	public function newSurveySettings() {
 		$event = $this->getEvent();
-		$iSurveyID = $event->get('iSurveyID');
-		$this->set('sid', $iSurveyID);
-		$this->pluginManager->getAPI()->setFlash($iSurveyID);
 		foreach ($event->get('settings') as $name => $value) {
 			$this->set($name, $value, 'Survey', $event->get('survey'));
 		}
