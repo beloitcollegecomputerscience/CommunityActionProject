@@ -86,7 +86,7 @@ class Report extends PluginBase {
 		$event->set("surveysettings.{$this->id}", array(
 			'name' => get_class($this),
 			'settings' => array(
-				'program' => array(
+				'program_enrollement' => array(
 					// Right now string. Could use label type and pass array of existing programs.
 					'type' => 'string',
 					'default' => 'No Program',
