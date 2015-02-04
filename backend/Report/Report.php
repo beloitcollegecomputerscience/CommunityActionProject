@@ -5,6 +5,19 @@ class Report extends PluginBase {
 	static protected $description = 'Community Action reporting tool';
 	static protected $name = "Community Action";
 
+	protected $settings = array(
+		'programs' => array(
+			'type' => 'list',
+			'label' => 'Programs',
+			'items' => array(
+				'name' => array(
+					'type' => 'string',
+					'label' => 'Program Name:',
+				),
+			),
+		),
+	);
+
 	public function __construct(PluginManager $manager, $id) {
 		parent::__construct($manager, $id);
 
@@ -23,20 +36,6 @@ class Report extends PluginBase {
 	 *  		 to createTable() Tie to Survey and program tables here?
 	 **/
 	public function beforeActivate() {
-		// Create CA_programs table if not created
-		if (!$this->api->tableExists($this, 'programs')) {
-			$this->api->createTable($this, 'programs', array(
-				'id' => 'pk',
-				'programName' => 'string'));
-		}
-
-		// Create CA_program_enrollement
-		if (!$this->api->tableExists($this, 'program_enrollement')) {
-			$this->api->createTable($this, 'program_enrollement', array(
-				'sid' => 'pk',
-				'pid' => 'string'));
-		}
-
 		// Display Welcome Message to User
 		$this->pluginManager->getAPI()->setFlash('Thank you for Activating the
             Community Action Plugin.');
@@ -87,7 +86,7 @@ class Report extends PluginBase {
 		$event->set("surveysettings.{$this->id}", array(
 			'name' => get_class($this),
 			'settings' => array(
-				'program' => array(
+				'program_enrollement' => array(
 					// Right now string. Could use label type and pass array of existing programs.
 					'type' => 'string',
 					'default' => 'No Program',
