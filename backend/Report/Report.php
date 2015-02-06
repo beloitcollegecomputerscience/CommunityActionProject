@@ -35,34 +35,18 @@ class Report extends PluginBase
     /**
      * Runs when plugin is activated creates all the necessary tables to support
      * Community Action Reporting Plugin
-     * TODO: Additional SQL fragments can be passed in as an $options parameter
-     *         to createTable() Tie to Survey and program tables here?
      **/
     public function beforeActivate()
     {
-        // Display Welcome Message to User
-        $this->pluginManager->getAPI()->setFlash('Thank you for Activating the
-            Community Action Plugin.');
-
         if (!$this->api->tableExists($this, 'programs')) {
             $this->api->createTable($this, 'programs', array(
                 'id' => 'pk',
                 'programName' => 'string'));
         }
 
-        // Create CA_program_enrollement
-        if (!$this->api->tableExists($this, 'program_enrollment')) {
-            $this->api->createTable($this, 'program_enrollment', array(
-                'sid' => 'pk',
-                'pid' => 'string'));
-        }
-
-        $table = $this->api->getTable($this, 'program_enrollment');
-
-        $responses = $table->findAllAsArray();
-
-        $this->pluginManager->getAPI()->setFlash($responses);
-
+        // Display Welcome Message to User
+        $this->pluginManager->getAPI()->setFlash('Thank you for Activating the
+            Community Action Plugin.');
     }
 
     /**
@@ -100,11 +84,25 @@ class Report extends PluginBase
      **/
     function showReports()
     {
+        // Get program to add from GET request
         $program = $_GET['program'];
-        $this->pluginManager->getAPI()->setFlash($program);
-        $programModel = $this->api->newModel($this, 'programs');
-        $programModel->programName = $program;
-        $programModel->save();
+
+        // If program to add is not null add to create model and save to programs table
+        if ($program != null) {
+            $this->pluginManager->getAPI()->setFlash($program);
+            $programModel = $this->api->newModel($this, 'programs');
+            $programModel->programName = $program;
+            $programModel->save();
+        }
+
+
+//        Dustin these should be returning everything in the programs table try to stick to YII framework
+//        http://www.yiiframework.com/doc/api/1.1/CActiveRecord#findAll-detail
+//        $programModel = $this->api->newModel($this, 'programs');
+//        $results = $programModel::model()->findAllBySql('select * from community action_programs');
+//        $results = $programModel::model()->findAll();
+
+        // Add hidden form fields to add params to get request and capture inputted program name
         $content = '
         <form name="addProgram" method="GET"  action="direct">
             <input type="text" name="plugin" value="Report" style="display: none">
@@ -114,6 +112,8 @@ class Report extends PluginBase
         </form>
         <script type=\'text/javascript\'></script>
         ';
+
+        //$content is what is rendered to page
         return $content;
     }
 
