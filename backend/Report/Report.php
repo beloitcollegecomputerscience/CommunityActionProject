@@ -105,15 +105,15 @@ class Report extends PluginBase
 //        $results = $programModel::model()->findAll();
 
         // Add hidden form fields to add params to get request and capture inputted program name
-        $content = '
-        <form name="addProgram" method="GET"  action="direct">
-            <input type="text" name="plugin" value="Report" style="display: none">
-            <input type="text" name="function" value="showReports" style="display: none">
-            <input type="text" name="program">
-            <input type="submit" value="Submit">
-        </form>
-        <script type=\'text/javascript\'></script>
-        ';
+        $content = <<<HTML
+<form name="addProgram" method="GET" action="direct">
+<input type="text" name="plugin" value="Report" style="display: none">
+<input type="text" name="function" value="showReports" style="display: none">
+<input type="text" name="program">
+<input type="submit" value="Submit">
+</form>
+<script type="text/javascript"></script>
+HTML;
 
         //$content is what is rendered to page
         return $content;
