@@ -87,10 +87,12 @@ class Report extends PluginBase
         // Get program to add from GET request
         $program = $_GET['program'];
 
+        // Creates a model of our programs table so that we can add rows.
+        $programModel = $this->api->newModel($this, 'programs');
+
         // If program to add is not null add to create model and save to programs table
         if ($program != null) {
             $this->pluginManager->getAPI()->setFlash($program);
-            $programModel = $this->api->newModel($this, 'programs');
             $programModel->programName = $program;
             $programModel->save();
         }
