@@ -153,7 +153,7 @@ HTML;
             'name' => get_class($this),
             'settings' => array(
                 'program_enrollment' => array(
-                    // Right now string. Could use label type and pass array of existing programs.
+                    // Select = Drop down menu
                     'type' => 'select',
                     'options' => $options,
                 ),
