@@ -91,29 +91,37 @@ class Report extends PluginBase
         $programModel = $this->api->newModel($this, 'programs');
 
         // If program to add is not null add to create model and save to programs table
-        if ($program != null) {
+        if ($program != null && !in_array($program, $programs)) {
             $this->pluginManager->getAPI()->setFlash($program);
             $programModel->programName = $program;
             $programModel->save();
+
+            // Do this again to refesh $programs after adding a program
+            $results = $programModel->findAllBySql("SELECT * FROM `lime_community action_programs`");
+            $programs = CHtml::listData($results,"id","programName");
+        } else {
+            // echo "The Program you entered already exists!";
         }
 
-
-//        Dustin these should be returning everything in the programs table try to stick to YII framework
-//        http://www.yiiframework.com/doc/api/1.1/CActiveRecord#findAll-detail
-//        $programModel = $this->api->newModel($this, 'programs');
-//        $results = $programModel::model()->findAllBySql('select * from community action_programs');
-//        $results = $programModel::model()->findAll();
+        // Throw together a bunch of li elements to represent the programs
+        foreach ($programs as $program) {
+            $list = $list . "<li>$program</li>";
+        }
 
         // Add hidden form fields to add params to get request and capture inputted program name
-        $content = <<<HTML
+        $form = <<<HTML
+<h5>Add a Program:</h5>
 <form name="addProgram" method="GET" action="direct">
 <input type="text" name="plugin" value="Report" style="display: none">
 <input type="text" name="function" value="showReports" style="display: none">
 <input type="text" name="program">
 <input type="submit" value="Submit">
 </form>
-<script type="text/javascript"></script>
+<h5>Programs:</h5>
 HTML;
+
+        // This feels silly.
+        $content = $form . "<ul>" . $list . "</ul>";
 
         //$content is what is rendered to page
         return $content;
