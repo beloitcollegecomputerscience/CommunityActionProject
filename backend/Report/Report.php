@@ -133,16 +133,29 @@ HTML;
      **/
     public function beforeSurveySettings()
     {
+        // Create program model
+        $programModel = $this->api->newModel($this, 'programs');
+        
+        // Construct options array before feeding it into this event.
+        $results = $programModel->findAllBySql("SELECT * FROM `lime_community action_programs`");
+        
+        $programs = CHtml::listData($results,"id","programName");
+
+        // This creates the array of options that we will feed in to the event below.
+        $options = array();
+        foreach ($programs as $program) {
+            // Maybe don't want to store the raw program string like this. It will work for now.
+            $options[$program] = $program;
+        }
+
         $event = $this->getEvent();
         $event->set("surveysettings.{$this->id}", array(
             'name' => get_class($this),
             'settings' => array(
                 'program_enrollment' => array(
                     // Right now string. Could use label type and pass array of existing programs.
-                    'type' => 'string',
-                    'default' => 'No Program',
-                    'label' => 'Select Program',
-                    'current' => $this->get('program', 'Survey', $event->get('survey')),
+                    'type' => 'select',
+                    'options' => $options,
                 ),
             ),
         ));
