@@ -90,6 +90,9 @@ class Report extends PluginBase
         // Creates a model of our programs table so that we can add rows.
         $programModel = $this->api->newModel($this, 'programs');
 
+        //Get all programs from table to check against for duplicates
+        $results = $programModel ->findAll();
+        $programs = CHtml::listData($results, "id", "programName");
         // If program to add is not null add to create model and save to programs table
         if ($program != null && !in_array($program, $programs)) {
             $this->pluginManager->getAPI()->setFlash($program);
