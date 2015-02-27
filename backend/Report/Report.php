@@ -96,14 +96,15 @@ class Report extends PluginBase
             $programModel->programName = $program;
             $programModel->save();
 
-            // Do this again to refesh $programs after adding a program
-            $results = $programModel->findAllBySql("SELECT * FROM `lime_community action_programs`");
-            $programs = CHtml::listData($results,"id","programName");
+            // Do this again to refresh $programs after adding a program
+            $results = $programModel->findAll();
+            $programs = CHtml::listData($results, "id", "programName");
         } else {
             // echo "The Program you entered already exists!";
         }
 
         // Throw together a bunch of li elements to represent the programs
+        $list = "";
         foreach ($programs as $program) {
             $list = $list . "<li>$program</li>";
         }
@@ -135,11 +136,9 @@ HTML;
     {
         // Create program model
         $programModel = $this->api->newModel($this, 'programs');
-        
         // Construct options array before feeding it into this event.
-        $results = $programModel->findAllBySql("SELECT * FROM `lime_community action_programs`");
-        
-        $programs = CHtml::listData($results,"id","programName");
+        $results = $programModel->findAll();
+        $programs = CHtml::listData($results, "id", "programName");
 
         // This creates the array of options that we will feed in to the event below.
         $options = array();
