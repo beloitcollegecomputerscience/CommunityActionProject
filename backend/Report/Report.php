@@ -96,7 +96,7 @@ class Report extends PluginBase
             $programModel->programName = $program;
             $programModel->save();
 
-            // Do this again to refesh $programs after adding a program
+            // Do this again to refresh $programs after adding a program
             $results = $programModel->findAllBySql("SELECT * FROM `lime_community action_programs`");
             $programs = CHtml::listData($results,"id","programName");
         } else {
