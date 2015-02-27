@@ -87,31 +87,45 @@ class Report extends PluginBase
         // Get program to add from GET request
         $program = $_GET['program'];
 
+        // Creates a model of our programs table so that we can add rows.
+        $programModel = $this->api->newModel($this, 'programs');
+
+        //Get all programs from table to check against for duplicates
+        $results = $programModel ->findAll();
+        $programs = CHtml::listData($results, "id", "programName");
         // If program to add is not null add to create model and save to programs table
-        if ($program != null) {
+        if ($program != null && !in_array($program, $programs)) {
             $this->pluginManager->getAPI()->setFlash($program);
-            $programModel = $this->api->newModel($this, 'programs');
             $programModel->programName = $program;
             $programModel->save();
+
+            // Do this again to refresh $programs after adding a program
+            $results = $programModel->findAll();
+            $programs = CHtml::listData($results, "id", "programName");
+        } else {
+            // echo "The Program you entered already exists!";
         }
 
-
-//        Dustin these should be returning everything in the programs table try to stick to YII framework
-//        http://www.yiiframework.com/doc/api/1.1/CActiveRecord#findAll-detail
-//        $programModel = $this->api->newModel($this, 'programs');
-//        $results = $programModel::model()->findAllBySql('select * from community action_programs');
-//        $results = $programModel::model()->findAll();
+        // Throw together a bunch of li elements to represent the programs
+        $list = "";
+        foreach ($programs as $program) {
+            $list = $list . "<li>$program</li>";
+        }
 
         // Add hidden form fields to add params to get request and capture inputted program name
-        $content = '
-        <form name="addProgram" method="GET"  action="direct">
-            <input type="text" name="plugin" value="Report" style="display: none">
-            <input type="text" name="function" value="showReports" style="display: none">
-            <input type="text" name="program">
-            <input type="submit" value="Submit">
-        </form>
-        <script type=\'text/javascript\'></script>
-        ';
+        $form = <<<HTML
+<h5>Add a Program:</h5>
+<form name="addProgram" method="GET" action="direct">
+<input type="text" name="plugin" value="Report" style="display: none">
+<input type="text" name="function" value="showReports" style="display: none">
+<input type="text" name="program">
+<input type="submit" value="Submit">
+</form>
+<h5>Programs:</h5>
+HTML;
+
+        // This feels silly.
+        $content = $form . "<ul>" . $list . "</ul>";
 
         //$content is what is rendered to page
         return $content;
@@ -123,16 +137,27 @@ class Report extends PluginBase
      **/
     public function beforeSurveySettings()
     {
+        // Create program model
+        $programModel = $this->api->newModel($this, 'programs');
+        // Construct options array before feeding it into this event.
+        $results = $programModel->findAll();
+        $programs = CHtml::listData($results, "id", "programName");
+
+        // This creates the array of options that we will feed in to the event below.
+        $options = array();
+        foreach ($programs as $program) {
+            // Maybe don't want to store the raw program string like this. It will work for now.
+            $options[$program] = $program;
+        }
+
         $event = $this->getEvent();
         $event->set("surveysettings.{$this->id}", array(
             'name' => get_class($this),
             'settings' => array(
                 'program_enrollment' => array(
-                    // Right now string. Could use label type and pass array of existing programs.
-                    'type' => 'string',
-                    'default' => 'No Program',
-                    'label' => 'Select Program',
-                    'current' => $this->get('program', 'Survey', $event->get('survey')),
+                    // Select = Drop down menu
+                    'type' => 'select',
+                    'options' => $options,
                 ),
             ),
         ));
