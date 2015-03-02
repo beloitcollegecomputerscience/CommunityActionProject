@@ -10,13 +10,13 @@ class Report extends PluginBase
     protected $settings = array(
         'programs' => array(
             'type' => 'list',
-            'label' => 'Programs',
-            'items' => array(
-                'name' => array(
-                    'type' => 'string',
-                    'label' => 'Program Name:',
-                ),
-            ),
+				'label' => 'Programs',
+				'items' => array(
+					'name' => array(
+						'type' => 'string',
+							'label' => 'Program Name:',
+					),
+				),
         ),
     );
 
@@ -41,12 +41,25 @@ class Report extends PluginBase
         if (!$this->api->tableExists($this, 'programs')) {
             $this->api->createTable($this, 'programs', array(
                 'id' => 'pk',
-                'programName' => 'string'));
+					'programName' => 'string'));
         }
 
-        // Display Welcome Message to User
-        $this->pluginManager->getAPI()->setFlash('Thank you for Activating the
-            Community Action Plugin.');
+		if (!$this->api->tableExists($this, 'program_enrollment')) {
+            $this->api->createTable($this, 'program_enrollment', array(
+                'survey_id' => 'int',
+					'programName' => 'string'));
+        }
+
+
+		$programModel = $this->api->newModel($this, 'programs');
+		
+        //Get all programs from table to check against for duplicates
+        $results = $programModel ->findAll();
+        $programs = CHtml::listData($results, "id", "programName");
+		if (!in_array("Select a Program...", $programs)) {		
+			$programModel->programName = "Select a Program...";
+			$programModel->save();
+		}
     }
 
     /**
@@ -59,8 +72,8 @@ class Report extends PluginBase
         $menu = $event->get('menu', array());
         $menu['items']['left'][] = array(
             'href' => "plugins/direct?plugin=Report&function=showReports",
-            'alt' => gT('CA Report'),
-            'image' => 'chart_bar.png',
+				'alt' => gT('CA Report'),
+				'image' => 'chart_bar.png',
         );
 
         $event->set('menu', $menu);
@@ -137,6 +150,10 @@ HTML;
      **/
     public function beforeSurveySettings()
     {
+
+		$event = $this->getEvent();
+		$survey_id = $event->get('survey');
+		
         // Create program model
         $programModel = $this->api->newModel($this, 'programs');
         // Construct options array before feeding it into this event.
@@ -150,16 +167,30 @@ HTML;
             $options[$program] = $program;
         }
 
-        $event = $this->getEvent();
+		$programEnrollment = $this->api->newModel($this, 'program_enrollment');
+		$results = $programEnrollment->findAll('survey_id=:sid', array(':sid'=>$survey_id));
+        $program = CHtml::listData($results, "survey_id", "programName");
+
+		print "<pre>";
+		print_r($program);
+		print "</pre>";
+
+		if($results == null) {
+			$current = 'Select a program...';
+		} else {
+			$current = $program;
+		}
+
         $event->set("surveysettings.{$this->id}", array(
             'name' => get_class($this),
-            'settings' => array(
-                'program_enrollment' => array(
-                    // Select = Drop down menu
-                    'type' => 'select',
-                    'options' => $options,
-                ),
-            ),
+				'settings' => array(
+					'program_enrollment' => array(
+						// Select = Drop down menu
+						'type' => 'select',
+							'options' => $options,
+							'current' => $current
+					),
+				),
         ));
     }
 
@@ -167,10 +198,15 @@ HTML;
     {
         $event = $this->getEvent();
         foreach ($event->get('settings') as $name => $value) {
-            $this->set($name, $value, 'Survey', $event->get('survey'));
+			if($name = "program_enrollment") {
+				$enrollmentModel = $this->api->newModel($this, 'program_enrollment');
+				$enrollmentModel->survey_id = $event->get('survey');
+				$enrollmentModel->programName = $value;
+				$enrollmentModel->save();
+			} else {
+				$this->set($name, $value, 'Survey', $event->get('survey'));
+			}
         }
     }
-
 }
-
 ?>
