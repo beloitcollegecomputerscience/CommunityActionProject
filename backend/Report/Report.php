@@ -2,23 +2,9 @@
 
 class Report extends PluginBase
 {
-
     protected $storage = 'DbStorage';
     static protected $description = 'Community Action reporting tool';
     static protected $name = "Community Action";
-
-    protected $settings = array(
-        'programs' => array(
-            'type' => 'list',
-				'label' => 'Programs',
-				'items' => array(
-					'name' => array(
-						'type' => 'string',
-							'label' => 'Program Name:',
-					),
-				),
-        ),
-    );
 
     public function __construct(PluginManager $manager, $id)
     {
