@@ -4,7 +4,7 @@ class Report extends PluginBase
 {
     protected $storage = 'DbStorage';
     static protected $description = 'Community Action reporting tool';
-    static protected $name = "Community Action";
+    static protected $name = "Community_Action";
 
     public function __construct(PluginManager $manager, $id)
     {
