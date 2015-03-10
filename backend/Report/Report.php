@@ -58,15 +58,18 @@ class Report extends PluginBase
      **/
     public function afterAdminMenuLoad()
     {
-        $event = $this->event;
-        $menu = $event->get('menu', array());
-        $menu['items']['left'][] = array(
-            'href' => "plugins/direct?plugin=Report&function=showReports",
-            'alt' => gT('CA Report'),
-            'image' => 'chart_bar.png',
-        );
+        //Check for if current user is authenticated as a superadmin
+        if ($this->isSuperAdmin()) {
+            $event = $this->event;
+            $menu = $event->get('menu', array());
+            $menu['items']['left'][] = array(
+                'href' => "plugins/direct?plugin=Report&function=managePrograms",
+                'alt' => gT('CA Report'),
+                'image' => 'chart_bar.png',
+            );
 
-        $event->set('menu', $menu);
+            $event->set('menu', $menu);
+        }
     }
 
     /**
@@ -74,17 +77,23 @@ class Report extends PluginBase
      **/
     public function newDirectRequest()
     {
-        $event = $this->event;
-        //get the function param and then you can call that method
-        $functionToCall = $event->get('function');
-        $content = call_user_func(array($this, $functionToCall));
-        $event->setContent($this, $content);
+        //Check for if current user is authenticated as a superadmin
+        if ($this->isSuperAdmin()) {
+            $event = $this->event;
+            //get the function param and then you can call that method
+            $functionToCall = $event->get('function');
+            $content = call_user_func(array($this, $functionToCall));
+            $event->setContent($this, $content);
+        } else {
+            //Redirect to Login Form *This is the proper way to do this with Yii Framework*
+            Yii::app()->getController()->redirect(array('/admin/authentication/sa/login'));
+        }
     }
 
     /**
      * Defines the content on the report page
      **/
-    function showReports()
+    function managePrograms()
     {
         // Get program to add from form post
         $program = $_GET['program'];
@@ -119,7 +128,7 @@ class Report extends PluginBase
 <h5>Add a Program:</h5>
 <form name="addProgram" method="GET" action="direct">
 <input type="text" name="plugin" value="Report" style="display: none">
-<input type="text" name="function" value="showReports" style="display: none">
+<input type="text" name="function" value="managePrograms" style="display: none">
 <input type="text" name="program">
 <input type="submit" value="Submit">
 </form>
@@ -193,6 +202,23 @@ HTML;
             }
         }
     }
+
+    /**---Helper Functions---**/
+
+    /**
+     * Checks for if user is authenticated and of type superadmin
+     */
+    private function isSuperAdmin()
+    {
+        $currentUser = $this->api->getPermissionSet($this->api->getCurrentUser()->uid);
+        $currentUserPermissions = $currentUser[1][permission];
+        if ($currentUserPermissions == 'superadmin') {
+            return true;
+        }
+        return false;
+
+    }
+
 }
 
 ?>
