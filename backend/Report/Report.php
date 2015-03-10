@@ -112,7 +112,9 @@ class Report extends PluginBase
         // Build up UI representing the programs
         $list = "";
         foreach ($existingPrograms as $programToAdd) {
-            $list = $list . "<li>$programToAdd</li>";
+            if ($programToAdd != $this->defaultProgram) {
+                $list = $list . "<li>$programToAdd</li>";
+            }
         }
 
         // Add hidden form fields to add params to get request and capture inputted program name
