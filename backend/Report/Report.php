@@ -183,7 +183,11 @@ HTML;
             //TODO We need to erase old entry here as well
             if ($name = "program_enrollment") {
                 $enrollmentModel = $this->api->newModel($this, 'program_enrollment');
-                $enrollmentModel->survey_id = $event->get('survey');
+                $surveyID = $event->get('survey');
+                //Delete old record
+                $enrollmentModel->deleteAll('survey_id=:sid', array(':sid' => $surveyID));
+                //Save new one
+                $enrollmentModel->survey_id = $surveyID;
                 $enrollmentModel->programName = $value;
                 $enrollmentModel->save();
             } else {
