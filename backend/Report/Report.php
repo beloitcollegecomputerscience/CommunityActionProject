@@ -6,6 +6,8 @@ class Report extends PluginBase
     static protected $description = 'Community Action reporting tool';
     static protected $name = "Community_Action";
 
+    protected $defaultProgram = "Select a Program...";
+
     public function __construct(PluginManager $manager, $id)
     {
         parent::__construct($manager, $id);
@@ -38,13 +40,10 @@ class Report extends PluginBase
                 'programName' => 'string'));
         }
 
-        //Insert Default program check first to see if its has already been added
-        $programModel = $this->api->newModel($this, 'programs');
-        //Get all programs from table to check against for duplicates
-        $results = $programModel->findAll();
-        $programs = CHtml::listData($results, "id", "programName");
-        if (!in_array("Select a Program...", $programs)) {
-            $programModel->programName = "Select a Program...";
+        // TODO Wanted to put above in table creation but not working... async issue??
+        if (empty($programs)) {
+            $programModel = $this->api->newModel($this, 'programs');
+            $programModel->programName = $this->defaultProgram;
             $programModel->save();
         }
 
@@ -96,17 +95,17 @@ class Report extends PluginBase
         $programs = CHtml::listData($results, "id", "programName");
 
         // If program to add is not null or already added save to programs table
-        if ($program != null && !in_array($program, $programs)) {
-            $this->pluginManager->getAPI()->setFlash($program);
+        $programExists = in_array($program, $programs);
+        if ($program != null && !$programExists) {
             $programModel->programName = $program;
             $programModel->save();
 
             // Do this again to refresh $programs after adding a program
             $results = $programModel->findAll();
             $programs = CHtml::listData($results, "id", "programName");
-        } else {
+        } else if($programExists) {
             // Let user know cant add duplicate programs
-            $this->pluginManager->getAPI()->setFlash('That program already exists.');
+            $this->pluginManager->getAPI()->setFlash('The program: \''.$program.'\' already exists.');
         }
 
         // Throw together a bunch of li elements to represent the programs
