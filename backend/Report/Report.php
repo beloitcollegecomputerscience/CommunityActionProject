@@ -41,10 +41,8 @@ class Report extends PluginBase
         }
 
         // TODO Wanted to put above in table creation but not working... async issue??
-        if (empty($programs)) {
-            $programModel = $this->api->newModel($this, 'programs');
-            $programModel->programName = $this->defaultProgram;
-            $programModel->save();
+        if ($this->getPrograms() == null) {
+            $this->saveProgram($this->defaultProgram);
         }
 
         // Display Welcome Message to User
@@ -63,6 +61,7 @@ class Report extends PluginBase
             $event = $this->event;
             $menu = $event->get('menu', array());
             $menu['items']['left'][] = array(
+                //TODO This breaks if you click the link again from the manage program page
                 'href' => "plugins/direct?plugin=Report&function=managePrograms",
                 'alt' => gT('CA Report'),
                 'image' => 'chart_bar.png',
@@ -96,31 +95,24 @@ class Report extends PluginBase
     function managePrograms()
     {
         // Get program to add from form post
-        $program = $_GET['program'];
-
+        $programToAdd = $_GET['program'];
         //Get all programs from table to check against for duplicates
-        $programModel = $this->api->newModel($this, 'programs');
-        $results = $programModel->findAll();
-        $programs = CHtml::listData($results, "id", "programName");
-
+        $existingPrograms = $this->getPrograms();
         // If program to add is not null or already added save to programs table
-        $programExists = in_array($program, $programs);
-        if ($program != null && !$programExists) {
-            $programModel->programName = $program;
-            $programModel->save();
-
-            // Do this again to refresh $programs after adding a program
-            $results = $programModel->findAll();
-            $programs = CHtml::listData($results, "id", "programName");
-        } else if($programExists) {
+        $programExists = in_array($programToAdd, $existingPrograms);
+        if ($programToAdd != null && !$programExists) {
+            $this->saveProgram($programToAdd);
+            // Get all programs again to refresh list after adding a program
+            $existingPrograms = $this->getPrograms();
+        } else if ($programExists) {
             // Let user know cant add duplicate programs
-            $this->pluginManager->getAPI()->setFlash('The program: \''.$program.'\' already exists.');
+            $this->pluginManager->getAPI()->setFlash('The program: \'' . $programToAdd . '\' already exists.');
         }
 
-        // Throw together a bunch of li elements to represent the programs
+        // Build up UI representing the programs
         $list = "";
-        foreach ($programs as $program) {
-            $list = $list . "<li>$program</li>";
+        foreach ($existingPrograms as $programToAdd) {
+            $list = $list . "<li>$programToAdd</li>";
         }
 
         // Add hidden form fields to add params to get request and capture inputted program name
@@ -135,9 +127,8 @@ class Report extends PluginBase
 <h5>Programs:</h5>
 HTML;
 
-        // Set $content
-        $content = $form . "<ul>" . $list . "</ul>";
         //$content is what is rendered to page
+        $content = $form . "<ul>" . $list . "</ul>";
         return $content;
     }
 
@@ -147,17 +138,16 @@ HTML;
      **/
     public function beforeSurveySettings()
     {
-        // Get this settings ID
+        // Get this surveys ID
         $event = $this->getEvent();
         $survey_id = $event->get('survey');
 
         // Grab all entry's from program table to populate drop down with
-        $programModel = $this->api->newModel($this, 'programs');
-        $results = $programModel->findAll();
-        $programs = CHtml::listData($results, "id", "programName");
+        $existingPrograms = $this->getPrograms();
+
         // This creates the array of options that we will feed in to the event below.
         $options = array();
-        foreach ($programs as $program) {
+        foreach ($existingPrograms as $program) {
             $options[$program] = $program;
         }
 
@@ -219,6 +209,28 @@ HTML;
 
     }
 
+    /**
+     * Returns an array of all programs
+     * @param null $sid
+     * @return array
+     */
+    private function getPrograms($sid = null)
+    {
+        $programModel = $this->api->newModel($this, 'programs');
+        $results = $sid == null ? $programModel->findAll() : $programModel->findAll('survey_id=:sid', array(':sid' => $sid));
+        return $results == null ? null : CHtml::listData($results, "id", "programName");
+    }
+
+    /**
+     * Saves a new program mode
+     * @param $programName
+     */
+    private function saveProgram($programName)
+    {
+        $programModel = $this->api->newModel($this, 'programs');
+        $programModel->programName = $programName;
+        $programModel->save();
+    }
 }
 
 ?>
