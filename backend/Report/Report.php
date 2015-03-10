@@ -166,7 +166,7 @@ HTML;
         $results = $programEnrollment->findAll('survey_id=:sid', array(':sid' => $survey_id));
         $program = CHtml::listData($results, "survey_id", "programName");
         //If survey is associated set drop down menus current value to that program
-        $current = $results == null ? $this->$defaultProgram : $program;
+        $current = $results == null ? $this->defaultProgram : $program;
 
         //Custom settings for survey
         $event->set("surveysettings.{$this->id}", array(
