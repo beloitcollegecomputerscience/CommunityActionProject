@@ -113,10 +113,10 @@ class Report extends PluginBase
         $list = "";
         foreach ($existingPrograms as $programToAdd) {
             if ($programToAdd != $this->defaultProgram) {
-                $list = $list . "<li>$programToAdd</li>";
+                $list = $list . "$programToAdd<br/>";
             }
         }
-
+        // TODO do we want the ability to delete programs??
         // Add hidden form fields to add params to get request and capture inputted program name
         $form = <<<HTML
 <h5>Add a Program:</h5>
@@ -124,13 +124,12 @@ class Report extends PluginBase
 <input type="text" name="plugin" value="Report" style="display: none">
 <input type="text" name="function" value="managePrograms" style="display: none">
 <input type="text" name="program">
-<input type="submit" value="Submit">
+<input type="submit" value="+">
 </form>
-<h5>Programs:</h5>
 HTML;
 
         //$content is what is rendered to page
-        $content = $form . "<ul>" . $list . "</ul>";
+        $content = '<div class="container"style="margin-bottom: 20px">' . $form . '<h5>Programs:</h5>' . $list . '</div>';
         return $content;
     }
 
@@ -203,11 +202,12 @@ HTML;
 
     /**
      * Checks for if user is authenticated and of type superadmin
+     * TODO Do we really want to authenticate as super admin? probably just any user being logged in is enough for us?
      */
     private function isSuperAdmin()
     {
         $currentUser = $this->api->getPermissionSet($this->api->getCurrentUser()->uid);
-        $currentUserPermissions = $currentUser[1][permission];
+        $currentUserPermissions = $currentUser[1][permission]; // TODO will this break if multiple people are logged in at once??
         if ($currentUserPermissions == 'superadmin') {
             return true;
         }
