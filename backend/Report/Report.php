@@ -31,6 +31,8 @@ class Report extends PluginBase
             $this->api->createTable($this, 'programs', array(
                 'id' => 'pk',
                 'programName' => 'string'));
+            //Save Default Program
+            $this->saveProgram($this->defaultProgram);
         }
 
         //Create Program Enrollment
@@ -38,11 +40,6 @@ class Report extends PluginBase
             $this->api->createTable($this, 'program_enrollment', array(
                 'survey_id' => 'int',
                 'programName' => 'string'));
-        }
-
-        // TODO Wanted to put above in table creation but not working... async issue??
-        if ($this->getPrograms() == null) {
-            $this->saveProgram($this->defaultProgram);
         }
 
         // Display Welcome Message to User
