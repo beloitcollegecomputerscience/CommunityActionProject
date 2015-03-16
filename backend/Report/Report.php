@@ -178,7 +178,6 @@ HTML;
         $event = $this->getEvent();
         foreach ($event->get('settings') as $name => $value) {
             //Catch our custom setting and save in program_enrollment table instead of generic plugin settings table
-            //TODO We need to erase old entry here as well
             if ($name = "program_enrollment") {
                 $enrollmentModel = $this->api->newModel($this, 'program_enrollment');
                 $surveyID = $event->get('survey');
