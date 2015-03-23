@@ -87,6 +87,37 @@ class Report extends PluginBase
     }
 
     /**
+     * @param $programNames
+     */
+    function generateReport($programNames)
+    {
+        //TODO In future we will put code below inside loop to execute for each program we want a report on
+//        $numberOfPrograms = count($programNames);
+//        for ($i = 0; $i < $numberOfPrograms; $i++) {
+//            //Get sid, pid's and gid's associated with each program
+//        }
+        //TODO For now just test
+        print_r('<pre>');
+        $query = "SELECT
+              q.sid, q.gid, q.qid
+              FROM questions q
+              INNER JOIN groups g ON g.gid = q.gid
+              WHERE g.group_name = 'Community Action\'s Core Questions 03/04/2015'
+              AND q.sid IN (SELECT
+                survey_id
+                FROM community_action_program_enrollment pge
+                INNER JOIN community_action_programs pg ON pge.programName = pg.programName
+                WHERE pg.programName ='Housing Program')";
+
+        //get data
+        $results = Yii::app()->db->createCommand($query)->query();
+
+        foreach ($results->readAll() as $row) {
+            print_r($row);
+        }
+    }
+
+    /**
      * Defines the content on the report page
      **/
     function managePrograms()
