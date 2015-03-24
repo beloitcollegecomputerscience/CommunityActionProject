@@ -114,6 +114,14 @@ class Report extends PluginBase
 
         foreach ($results->readAll() as $row) {
             print_r($row);
+            $questionString = $row['sid'] . 'X' . $row['gid'] . 'X' . $row['qid'];
+            //TODO This is a bit slow but does it really matter for generating a report?
+            $aquery = "SELECT " . $questionString . " as AnswerValue, count(*) as Count FROM lime_survey.survey_" . $row['sid'] . " GROUP BY " . $questionString;
+            $aresults = Yii::app()->db->createCommand($aquery)->query();
+            foreach ($aresults->readAll() as $arow) {
+                print_r($arow);
+
+            }
         }
     }
 
