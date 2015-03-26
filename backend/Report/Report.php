@@ -96,7 +96,6 @@ class Report extends PluginBase
 //        for ($i = 0; $i < $numberOfPrograms; $i++) {
 //            //Get sid, pid's and gid's associated with each program
 //        }
-        print_r('<pre>');
 
         //TODO give question group name a better name
         $query = "SELECT
@@ -112,32 +111,37 @@ class Report extends PluginBase
 
         //get all questions associated with current program
         $results = Yii::app()->db->createCommand($query)->query();
+
         $returnReportData = [];
         $surveyData = [];
-
+        $surveyData['questions'] = array();
         // Loop through all returned questions and organize by their related surveys
         $currentSurvey = '';
-        foreach ($results->readAll() as $row) {
-            $questionString = $row['sid'] . 'X' . $row['gid'] . 'X' . $row['qid'];
-            $responsesQuery = "SELECT  ". $questionString ."  AS AnswerValue, COUNT(*) AS `Count` FROM lime_survey.survey_" . $row['sid'] . " GROUP BY " . $questionString;
+        foreach ($results->readAll() as $questionRow) {
+
+            $questionString = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
+            $responsesQuery = "SELECT  " . $questionString . "  AS AnswerValue, COUNT(*) AS `Count` FROM lime_survey.survey_"
+                . $questionRow['sid'] . " GROUP BY " . $questionString;
             //TODO add ability to filter on date ranges here
             $responsesResults = Yii::app()->db->createCommand($responsesQuery)->query();
 
             //check for if onto a new survey
-            if ($currentSurvey != $row['sid']) {
+            if ($currentSurvey != $questionRow['sid']) {
                 //Only add previous survey if not initial pass
                 if ($currentSurvey != '') {
+//                    print_r($surveyData);
                     array_push($returnReportData, $surveyData);
                     $surveyData = []; // Reset survey array for new survey's questions
+                    $surveyData['questions'] = array();
                 }
-                $currentSurvey = $row['sid'];
-                $surveyData['title'] = $row['sid']; //TODO Could query for survey title to show instead of ID
+                $currentSurvey = $questionRow['sid'];
+                $surveyData['title'] = $questionRow['sid']; //TODO Could query for survey title to show instead of ID
 
             }
 
             //This holds general information about each question
             $questionData = [];
-            $questionData['title'] = flattenText($row['question']);
+            $questionData['title'] = flattenText($questionRow['question']);
             //Holds current questions data in a graph-able format
             $graphData = [];
 
@@ -147,14 +151,14 @@ class Report extends PluginBase
             //Get all possible answers for current question
             $answersQuery = " SELECT `code` AS AnswerValue, answer AS AnswerText
                               FROM lime_survey.answers
-                              WHERE qid = " . $row['qid'];
+                              WHERE qid = " . $questionRow['qid'];
             $answersResults = Yii::app()->db->createCommand($answersQuery)->query();
             //Read first result
             $currentAnswer = $answersResults->read();
 
             //Loop through all returned user results
             foreach ($responsesResults->readAll() as $responseRow) {
-                //TODO Probably use answer short code as graoh labels and have legend in future text to long
+                //TODO Probably use answer short code as graph labels and have legend in future text to long
                 while ($responseRow['AnswerValue'] != $currentAnswer['AnswerValue']) {
                     //Fill Data Holes until next answer has value
                     array_push($graphData, [$currentAnswer['AnswerText'], 0, 'red']);
@@ -167,25 +171,33 @@ class Report extends PluginBase
                 $currentAnswer = $answersResults->read();
             }
             //Fill trailing data holes
-            if($currentAnswer){
+            if ($currentAnswer) {
                 array_push($graphData, [$currentAnswer['AnswerText'], 0, 'red']);
                 $currentAnswer = $answersResults->read();
-                while($currentAnswer){
+                while ($currentAnswer) {
                     array_push($graphData, [$currentAnswer['AnswerText'], 0, 'red']);
                     $currentAnswer = $answersResults->read();
                 }
             }
+
             //Update question and survey data arrays
             $questionData['graphData'] = $graphData;
-            array_push($surveyData, $questionData);
+            array_push($surveyData['questions'], $questionData);
         }
-
-        //Push final question to return array
         array_push($returnReportData, $surveyData);
 
-        // Final formatted data TODO Do some thing with this
-        print_r($returnReportData);
-        print_r(json_encode($returnReportData));
+        //Build Up UI TODO Encapsulate this!
+        $content = '<div class="container">';
+        foreach ($returnReportData as $survey) {
+            $content .= "<h1>Survey ID:" . $survey['title'] . "</h1>";
+            foreach ($survey['questions'] as $question) {
+                $content .= "<h4>" . $question['title'] . "</h4>";
+                $content .= "<pre>" . json_encode($question['graphData']) . "</pre>";
+            }
+        }
+
+        $content .= '</div>';
+        return $content;
     }
 
     /**
