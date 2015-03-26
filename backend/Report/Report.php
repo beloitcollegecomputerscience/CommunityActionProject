@@ -223,7 +223,7 @@ class Report extends PluginBase
 <input type="text" name="plugin" value="Report" style="display: none">
 <input type="text" name="function" value="managePrograms" style="display: none">
 <input type="text" name="program">
-<input type="submit" value="+">
+<input type="submit" value="+"> <a href="direct?plugin=Report&function=generateReport" class="button" style="margin-left: 30px;">Generate Report</a>
 </form>
 HTML;
 
