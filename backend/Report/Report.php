@@ -87,121 +87,18 @@ class Report extends PluginBase
     }
 
     /**
-     * @param $programNames
+     * Will generate a report based off data sent in form post
      */
-    function generateReport($programNames)
+    function generateReport()
     {
-        //TODO In future we will put code below inside loop to execute for each program we want a report on
-//        $numberOfPrograms = count($programNames);
-//        for ($i = 0; $i < $numberOfPrograms; $i++) {
-//            //Get sid, pid's and gid's associated with each program
-//        }
-
-        //TODO give question group name a better name
-        $query = "SELECT
-              q.sid, q.gid, q.qid, q.question
-              FROM questions q
-              INNER JOIN groups g ON g.gid = q.gid
-              WHERE g.group_name = 'Community Action\'s Core Questions 03/04/2015'
-              AND q.sid IN (SELECT
-                survey_id
-                FROM community_action_program_enrollment pge
-                INNER JOIN community_action_programs pg ON pge.programName = pg.programName
-                WHERE pg.programName ='Housing Program')";
-
-        //get all questions associated with current program
-        $results = Yii::app()->db->createCommand($query)->query();
-
-        $returnReportData = [];
-        $surveyData = [];
-        $surveyData['questions'] = array();
-        // Loop through all returned questions and organize by their related surveys
-        $currentSurvey = '';
-        foreach ($results->readAll() as $questionRow) {
-
-            $questionString = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
-            $responsesQuery = "SELECT  " . $questionString . "  AS AnswerValue, COUNT(*) AS `Count` FROM lime_survey.survey_"
-                . $questionRow['sid'] . " GROUP BY " . $questionString;
-            //TODO add ability to filter on date ranges here
-            $responsesResults = Yii::app()->db->createCommand($responsesQuery)->query();
-
-            //check for if onto a new survey
-            if ($currentSurvey != $questionRow['sid']) {
-                //Only add previous survey if not initial pass
-                if ($currentSurvey != '') {
-//                    print_r($surveyData);
-                    array_push($returnReportData, $surveyData);
-                    $surveyData = []; // Reset survey array for new survey's questions
-                    $surveyData['questions'] = array();
-                }
-                $currentSurvey = $questionRow['sid'];
-                $surveyData['title'] = $questionRow['sid']; //TODO Could query for survey title to show instead of ID
-
-            }
-
-            //This holds general information about each question
-            $questionData = [];
-            $questionData['title'] = flattenText($questionRow['question']);
-            //Holds current questions data in a graph-able format
-            $graphData = [];
-
-            //Push graph header data first for each question
-            array_push($graphData, array('Answer', 'Count', array('role' => 'style')));
-
-            //Get all possible answers for current question
-            $answersQuery = " SELECT `code` AS AnswerValue, answer AS AnswerText
-                              FROM lime_survey.answers
-                              WHERE qid = " . $questionRow['qid'];
-            $answersResults = Yii::app()->db->createCommand($answersQuery)->query();
-            //Read first result
-            $currentAnswer = $answersResults->read();
-
-            //Loop through all returned user results
-            foreach ($responsesResults->readAll() as $responseRow) {
-                //TODO Probably use answer short code as graph labels and have legend in future text to long
-                while ($responseRow['AnswerValue'] != $currentAnswer['AnswerValue']) {
-                    //Fill Data Holes until next answer has value
-                    array_push($graphData, [$currentAnswer['AnswerText'], 0, 'red']);
-                    $currentAnswer = $answersResults->read();
-                }
-
-                //Push valid
-                array_push($graphData, [$currentAnswer['AnswerText'], $responseRow['Count'], 'red']);
-                // Move to next answer result
-                $currentAnswer = $answersResults->read();
-            }
-            //Fill trailing data holes
-            if ($currentAnswer) {
-                array_push($graphData, [$currentAnswer['AnswerText'], 0, 'red']);
-                $currentAnswer = $answersResults->read();
-                while ($currentAnswer) {
-                    array_push($graphData, [$currentAnswer['AnswerText'], 0, 'red']);
-                    $currentAnswer = $answersResults->read();
-                }
-            }
-
-            //Update question and survey data arrays
-            $questionData['graphData'] = $graphData;
-            array_push($surveyData['questions'], $questionData);
-        }
-        array_push($returnReportData, $surveyData);
-
-        //Build Up UI TODO Encapsulate this!
-        $content = '<div class="container">';
-        foreach ($returnReportData as $survey) {
-            $content .= "<h1>Survey ID:" . $survey['title'] . "</h1>";
-            foreach ($survey['questions'] as $question) {
-                $content .= "<h4>" . $question['title'] . "</h4>";
-                $content .= "<pre>" . json_encode($question['graphData']) . "</pre>";
-            }
-        }
-
-        $content .= '</div>';
+        //Get all programs user wants a report on from form post
+        $inputPrograms = $_GET['programs'];
+        $content = $this->buildReportUI($this->getReportData($inputPrograms));
         return $content;
     }
 
     /**
-     * Defines the content on the report page
+     * Defines the content on the report page TODO Encapsulate this?
      **/
     function managePrograms()
     {
@@ -222,9 +119,18 @@ class Report extends PluginBase
 
         // Build up UI representing the programs
         $list = "";
+        $checkboxes = "";
+        $x = 0;
         foreach ($existingPrograms as $programToAdd) {
             if ($programToAdd != $this->defaultProgram) {
                 $list = $list . "$programToAdd<br/>";
+
+                $checkboxes .= '<div class="checkbox">
+                                 <label>
+                                <input type="checkbox" value="' . $programToAdd . '" name="programs[' . $x++ . ']">
+                                ' . $programToAdd . '
+                                </label>
+                                </div>';
             }
         }
         // TODO do we want the ability to delete programs??
@@ -235,12 +141,24 @@ class Report extends PluginBase
 <input type="text" name="plugin" value="Report" style="display: none">
 <input type="text" name="function" value="managePrograms" style="display: none">
 <input type="text" name="program">
-<input type="submit" value="+"> <a href="direct?plugin=Report&function=generateReport" class="button" style="margin-left: 30px;">Generate Report</a>
+<input type="submit" value="+">
 </form>
 HTML;
 
         //$content is what is rendered to page
         $content = '<div class="container"style="margin-bottom: 20px">' . $form . '<h5>Programs:</h5>' . $list . '</div>';
+
+        //Generate Report Form
+
+        $content .= '<div class="container" style="margin-bottom: 20px"><h5>Generate Report</h5>';
+
+        $content .= '<form name="generateReport" method="GET" action="direct">
+<input type="text" name="plugin" value="Report" style="display: none">
+<input type="text" name="function" value="generateReport" style="display: none">
+' . $checkboxes . '
+<input type="submit" value="Generate Report">
+</form></div>';
+
         return $content;
     }
 
@@ -309,6 +227,143 @@ HTML;
     }
 
     /**---Helper Functions---**/
+
+    /**
+     * @param $inputPrograms the names of all the programs we want to generate reports for
+     * @return array the data we need to generate a report
+     */
+    private function getReportData($inputPrograms)
+    {
+        //Holds general information about all program
+        $programs = [];
+        foreach ($inputPrograms as $program) {
+
+            //TODO give question group name a better name
+            $query = "SELECT
+              q.sid, q.gid, q.qid, q.question
+              FROM questions q
+              INNER JOIN groups g ON g.gid = q.gid
+              WHERE g.group_name = 'Community Action\'s Core Questions 03/04/2015'
+              AND q.sid IN (SELECT
+                survey_id
+                FROM community_action_program_enrollment pge
+                INNER JOIN community_action_programs pg ON pge.programName = pg.programName
+                WHERE pg.programName ='" . $program . "')";
+
+            //get all questions associated with current program
+            $results = Yii::app()->db->createCommand($query)->query();
+
+            //Holds general data about each program
+            $programData = [];
+            $programData['surveys'] = array();
+            $programData['title'] = $program;
+
+            //Holds general data about current survey
+            $surveyData = [];
+            $surveyData['questions'] = array();
+
+            // Loop through all returned questions and organize by their related surveys
+            $currentSurvey = '';
+            foreach ($results->readAll() as $questionRow) {
+
+                //build up string representing this questions responses column name in DB
+                $questionString = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
+                //Build up rest of query
+                $responsesQuery = "SELECT  " . $questionString . "  AS AnswerValue, COUNT(*) AS `Count` FROM lime_survey.survey_"
+                    . $questionRow['sid'] . " GROUP BY " . $questionString;
+                //TODO add ability to filter on date ranges here
+                //execute query
+                $responsesResults = Yii::app()->db->createCommand($responsesQuery)->query();
+
+                //check for if onto a new survey
+                if ($currentSurvey != $questionRow['sid']) {
+                    //Only add previous survey if not initial pass
+                    if ($currentSurvey != '') {
+//                    print_r($surveyData);
+                        array_push($programData['surveys'], $surveyData);
+                        $programData['title'] = $program;
+                        $surveyData = []; // Reset survey array for new survey's questions
+                        $surveyData['questions'] = array();
+                    }
+                    $currentSurvey = $questionRow['sid'];
+                    $surveyData['title'] = $questionRow['sid']; //TODO Could query for survey title to show instead of ID
+
+                }
+
+                //This holds general information about each question
+                $questionData = [];
+                $questionData['title'] = flattenText($questionRow['question']);
+                //Holds current questions data in a graph-able format
+                $graphData = [];
+
+                //Push graph header data first for each question
+                array_push($graphData, array('Answer', 'Count', array('role' => 'style')));
+
+                //Get all possible answers for current question
+                $answersQuery = " SELECT `code` AS AnswerValue, answer AS AnswerText
+                              FROM lime_survey.answers
+                              WHERE qid = " . $questionRow['qid'];
+                $answersResults = Yii::app()->db->createCommand($answersQuery)->query();
+                //Read first result
+                $currentAnswer = $answersResults->read();
+
+                //Loop through all returned user results
+                foreach ($responsesResults->readAll() as $responseRow) {
+                    //TODO Probably use answer short code as graph labels and have legend in future text to long
+                    while ($responseRow['AnswerValue'] != $currentAnswer['AnswerValue']) {
+                        //Fill Data Holes until next answer has value
+                        array_push($graphData, [$currentAnswer['AnswerText'], 0, 'red']);
+                        $currentAnswer = $answersResults->read();
+                    }
+
+                    //Push valid answer count
+                    array_push($graphData, [$currentAnswer['AnswerText'], $responseRow['Count'], 'red']);
+                    // Move to next answer result
+                    $currentAnswer = $answersResults->read();
+                }
+                //Fill trailing data holes
+                if ($currentAnswer) {
+                    array_push($graphData, [$currentAnswer['AnswerText'], 0, 'red']);
+                    $currentAnswer = $answersResults->read();
+                    while ($currentAnswer) {
+                        array_push($graphData, [$currentAnswer['AnswerText'], 0, 'red']);
+                        $currentAnswer = $answersResults->read();
+                    }
+                }
+
+                //Update question and survey data arrays
+                $questionData['graphData'] = $graphData;
+                array_push($surveyData['questions'], $questionData);
+            }
+            array_push($programData['surveys'], $surveyData);
+            array_push($programs, $programData);
+        }
+        return $programs;
+    }
+
+    /**
+     * @param $programs the data needed to populate the report
+     * @return string the html content we want rendered as the actual report
+     */
+    private function buildReportUI($programs)
+    {
+        $content = '<div class="container">';
+        foreach ($programs as $program) {
+            $content .= '<br/><br/>';
+            $content .= "<h1>Program Name: " . $program['title'] . "</h1>";
+            $content .= '<br/>';
+            foreach ($program['surveys'] as $survey) {
+
+                $content .= "<h2>Survey ID:" . $survey['title'] . "</h2>";
+                foreach ($survey['questions'] as $question) {
+                    $content .= "<h4>" . $question['title'] . "</h4>";
+                    $content .= "<pre>" . json_encode($question['graphData']) . "</pre>";
+                }
+            }
+        }
+        $content .= '</div>';
+        return $content;
+    }
 
     /**
      * Checks for if user is authenticated and of type superadmin
