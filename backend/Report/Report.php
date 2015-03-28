@@ -279,7 +279,6 @@ HTML;
                 if ($currentSurvey != $questionRow['sid']) {
                     //Only add previous survey if not initial pass
                     if ($currentSurvey != '') {
-//                    print_r($surveyData);
                         array_push($programData['surveys'], $surveyData);
                         $programData['title'] = $program;
                         $surveyData = []; // Reset survey array for new survey's questions
@@ -293,6 +292,7 @@ HTML;
                 //This holds general information about each question
                 $questionData = [];
                 $questionData['title'] = flattenText($questionRow['question']);
+                $questionData['possibleAnswers'] = array();
                 //Holds current questions data in a graph-able format
                 $graphData = [];
 
@@ -312,21 +312,25 @@ HTML;
                     //TODO Probably use answer short code as graph labels and have legend in future text to long
                     while ($responseRow['AnswerValue'] != $currentAnswer['AnswerValue']) {
                         //Fill Data Holes until next answer has value
-                        array_push($graphData, [$currentAnswer['AnswerText'], 0, 'red']);
+                        array_push($graphData, [$currentAnswer['AnswerValue'], 0, 'red']);
+                        array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
                         $currentAnswer = $answersResults->read();
                     }
 
-                    //Push valid answer count
-                    array_push($graphData, [$currentAnswer['AnswerText'], $responseRow['Count'], 'red']);
+                    //Push valid answer count and value
+                    array_push($graphData, [$currentAnswer['AnswerValue'], $responseRow['Count'], 'red']);
+                    array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
                     // Move to next answer result
                     $currentAnswer = $answersResults->read();
                 }
                 //Fill trailing data holes
                 if ($currentAnswer) {
-                    array_push($graphData, [$currentAnswer['AnswerText'], 0, 'red']);
+                    array_push($graphData, [$currentAnswer['AnswerValue'], 0, 'red']);
+                    array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
                     $currentAnswer = $answersResults->read();
                     while ($currentAnswer) {
-                        array_push($graphData, [$currentAnswer['AnswerText'], 0, 'red']);
+                        array_push($graphData, [$currentAnswer['AnswerValue'], 0, 'red']);
+                        array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
                         $currentAnswer = $answersResults->read();
                     }
                 }
@@ -347,7 +351,12 @@ HTML;
      */
     private function buildReportUI($programs)
     {
-        $content = '<div class="container">';
+        //Add google charts  dependency
+        $content = <<<HTML
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+HTML;
+        $content .= '<div class="container">';
+        $i = 0;
         foreach ($programs as $program) {
             $content .= '<br/><br/>';
             $content .= "<h1>Program Name: " . $program['title'] . "</h1>";
@@ -355,13 +364,67 @@ HTML;
             foreach ($program['surveys'] as $survey) {
 
                 $content .= "<h2>Survey ID:" . $survey['title'] . "</h2>";
+
                 foreach ($survey['questions'] as $question) {
-                    $content .= "<h4>" . $question['title'] . "</h4>";
-                    $content .= "<pre>" . json_encode($question['graphData']) . "</pre>";
+                    $content .= "<h4>" . $question['title'] . "</h4><br/>";
+                    //Generate Column Chart
+                    $content .= $this->generateColumnChart($question['graphData'], $i);
+                    $x = 0;
+                    foreach ($question['possibleAnswers'] as $answer) {
+                        $x++;
+                        $content .= '<br />A' . $x . " : " . $answer;
+                    }
+                    $content .= "<br /><br/>";
+                    $i++;
                 }
             }
         }
         $content .= '</div>';
+        return $content;
+    }
+
+    /**
+     * Generates a google column chart
+     * @param $graphData question data to generate
+     * @param $number numberOf Chart we are generating
+     * @return string The html Markup for the graph
+     */
+    private function generateColumnChart($graphData, $number)
+    {
+        $content = "";
+        $content .= <<<HTML
+                    <script type="text/javascript">
+
+                      google.load("visualization", "1.1", {packages:["bar"]});
+                      google.setOnLoadCallback(drawStuff);
+
+                      function drawStuff() {
+                        var data = new google.visualization.arrayToDataTable(
+HTML;
+        //The JSON Data for the graph
+        $content .= json_encode($graphData);
+
+        $content .= <<<HTML
+                        );
+
+                        var options = {
+                          width: 900,
+                          series: {
+                            0: { axis: 'count' }, // Bind series 0 to an axis named 'count'.
+                          },
+                          axes: {
+                            y: {
+                              count: {label: 'Count'}, // Left y-axis.
+                            }
+                          }
+                        };
+
+                      var chart = new google.charts.Bar(document.getElementById('dual_y_div $number'));
+                      chart.draw(data, options);
+                    };
+                </script>
+                <div id="dual_y_div $number" style="width: 900px; height: 500px;"></div>
+HTML;
         return $content;
     }
 
