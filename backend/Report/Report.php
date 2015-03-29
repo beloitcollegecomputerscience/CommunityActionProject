@@ -235,7 +235,7 @@ HTML;
     private function getReportData($inputPrograms)
     {
         //Holds general information about all program
-        $programs = [];
+        $programs = array();
         foreach ($inputPrograms as $program) {
 
             //TODO give question group name a better name
@@ -248,29 +248,29 @@ HTML;
                 survey_id
                 FROM community_action_program_enrollment pge
                 INNER JOIN community_action_programs pg ON pge.programName = pg.programName
-                WHERE pg.programName ='" . $program . "')";
+                WHERE pg.programName ='" . $program . "')
+                GROUP BY q.qid";
 
             //get all questions associated with current program
             $results = Yii::app()->db->createCommand($query)->query();
 
             //Holds general data about each program
-            $programData = [];
+            $programData = array();
             $programData['surveys'] = array();
             $programData['title'] = $program;
 
             //Holds general data about current survey
-            $surveyData = [];
+            $surveyData = array();
             $surveyData['questions'] = array();
 
             // Loop through all returned questions and organize by their related surveys
             $currentSurvey = '';
             foreach ($results->readAll() as $questionRow) {
-
                 //build up string representing this questions responses column name in DB
                 $questionString = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
                 //Build up rest of query
-                $responsesQuery = "SELECT  " . $questionString . "  AS AnswerValue, COUNT(*) AS `Count` FROM lime_survey.survey_"
-                    . $questionRow['sid'] . " GROUP BY " . $questionString;
+                $responsesQuery = "SELECT  `" . $questionString . "`  AS AnswerValue, COUNT(*) AS `Count` FROM lime_survey.survey_"
+                    . $questionRow['sid'] . " GROUP BY `" . $questionString . "`";
                 //TODO add ability to filter on date ranges here
                 //execute query
                 $responsesResults = Yii::app()->db->createCommand($responsesQuery)->query();
@@ -281,7 +281,7 @@ HTML;
                     if ($currentSurvey != '') {
                         array_push($programData['surveys'], $surveyData);
                         $programData['title'] = $program;
-                        $surveyData = []; // Reset survey array for new survey's questions
+                        $surveyData = array(); // Reset survey array for new survey's questions
                         $surveyData['questions'] = array();
                     }
                     $currentSurvey = $questionRow['sid'];
@@ -290,14 +290,11 @@ HTML;
                 }
 
                 //This holds general information about each question
-                $questionData = [];
+                $questionData = array();
                 $questionData['title'] = flattenText($questionRow['question']);
                 $questionData['possibleAnswers'] = array();
                 //Holds current questions data in a graph-able format
-                $graphData = [];
-
-                //Push graph header data first for each question
-                array_push($graphData, array('Answer', 'Count', array('role' => 'style')));
+                $answerCount = array();
 
                 //Get all possible answers for current question
                 $answersQuery = " SELECT `code` AS AnswerValue, answer AS AnswerText
@@ -309,39 +306,56 @@ HTML;
 
                 //Loop through all returned user results
                 foreach ($responsesResults->readAll() as $responseRow) {
-                    //TODO Probably use answer short code as graph labels and have legend in future text to long
-                    while ($responseRow['AnswerValue'] != $currentAnswer['AnswerValue']) {
+
+                    $done = false;
+                    //TODO This is not totally right yet there is still a bug with data holes after the intial no answer count!
+                    while ($responseRow['AnswerValue'] != $currentAnswer['AnswerValue'] && $currentAnswer && !$done) {
                         //Fill Data Holes until next answer has value
-                        array_push($graphData, [$currentAnswer['AnswerValue'], 0, 'red']);
-                        array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
-                        $currentAnswer = $answersResults->read();
+                        if($responseRow['AnswerValue'] == ""){
+                            print_r($done);
+                            // Must have this check for if the question was optional!
+                            array_push($answerCount, array('A0' => (int)$responseRow['Count'])); //If that was an option put at A0
+                            array_push($questionData['possibleAnswers'], 'No answer');
+                            $done = true;
+                        }else{
+                            array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
+                            array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
+                            $currentAnswer = $answersResults->read();
+                        }
                     }
 
-                    //Push valid answer count and value
-                    array_push($graphData, [$currentAnswer['AnswerValue'], $responseRow['Count'], 'red']);
-                    array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
+                    if ($currentAnswer) {
+                        //Push valid answer count and value
+                        array_push($answerCount, array($currentAnswer['AnswerValue'] => (int)$responseRow['Count']));
+                        array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
+
+                    }
                     // Move to next answer result
                     $currentAnswer = $answersResults->read();
                 }
+                //TODO If we make question optional then it leaves a hole in the answer text
                 //Fill trailing data holes
                 if ($currentAnswer) {
-                    array_push($graphData, [$currentAnswer['AnswerValue'], 0, 'red']);
+                    array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
                     array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
                     $currentAnswer = $answersResults->read();
                     while ($currentAnswer) {
-                        array_push($graphData, [$currentAnswer['AnswerValue'], 0, 'red']);
-                        array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
+                        array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
+                        array_push($questionData['possibleAnswers'], (int)$currentAnswer['AnswerText']);
                         $currentAnswer = $answersResults->read();
                     }
                 }
 
                 //Update question and survey data arrays
-                $questionData['graphData'] = $graphData;
+                $questionData['answerCount'] = $answerCount;
                 array_push($surveyData['questions'], $questionData);
             }
+
             array_push($programData['surveys'], $surveyData);
             array_push($programs, $programData);
         }
+//        print_r('<pre>');
+//        print_r($programs);
         return $programs;
     }
 
@@ -368,7 +382,7 @@ HTML;
                 foreach ($survey['questions'] as $question) {
                     $content .= "<h4>" . $question['title'] . "</h4><br/>";
                     //Generate Column Chart
-                    $content .= $this->generateColumnChart($question['graphData'], $i);
+                    $content .= $this->generateColumnChart($question['answerCount'], $i);
                     $x = 0;
                     foreach ($question['possibleAnswers'] as $answer) {
                         $x++;
@@ -389,7 +403,7 @@ HTML;
      * @param $number numberOf Chart we are generating
      * @return string The html Markup for the graph
      */
-    private function generateColumnChart($graphData, $number)
+    private function generateColumnChart($questionData, $number)
     {
         $content = "";
         $content .= <<<HTML
@@ -401,7 +415,21 @@ HTML;
                       function drawStuff() {
                         var data = new google.visualization.arrayToDataTable(
 HTML;
-        //The JSON Data for the graph
+
+        //Build the JSON Data for the graph
+        $graphData = array();
+
+        //Push graph header data first
+        array_push($graphData, array('Answer', 'Count', array('role' => 'style')));
+        //Check if question had no answer option
+        $i = $questionData['0']['A0'] != null ? 0 : 1;
+
+        foreach($questionData  as $responseData){
+            array_push($graphData, array('A'.$i, $responseData['A'.$i], '#b87333'));
+            $i++;
+        }
+
+
         $content .= json_encode($graphData);
 
         $content .= <<<HTML
@@ -425,6 +453,7 @@ HTML;
                 </script>
                 <div id="dual_y_div $number" style="width: 900px; height: 500px;"></div>
 HTML;
+        $content .= "<pre>".json_encode($graphData)."</pre>";
         return $content;
     }
 
