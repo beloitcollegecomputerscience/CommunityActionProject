@@ -311,13 +311,13 @@ HTML;
                     //TODO This is not totally right yet there is still a bug with data holes after the intial no answer count!
                     while ($responseRow['AnswerValue'] != $currentAnswer['AnswerValue'] && $currentAnswer && !$done) {
                         //Fill Data Holes until next answer has value
-                        if($responseRow['AnswerValue'] == ""){
+                        if ($responseRow['AnswerValue'] == "") {
                             print_r($done);
                             // Must have this check for if the question was optional!
                             array_push($answerCount, array('A0' => (int)$responseRow['Count'])); //If that was an option put at A0
                             array_push($questionData['possibleAnswers'], 'No answer');
                             $done = true;
-                        }else{
+                        } else {
                             array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
                             array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
                             $currentAnswer = $answersResults->read();
@@ -365,9 +365,12 @@ HTML;
      */
     private function buildReportUI($programs)
     {
-        //Add google charts  dependency
+        //Add google charts  dependency and all chart types we need
         $content = <<<HTML
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript">
+    google.load("visualization", "1.1", {packages:["bar", "corechart"]});
+</script>
 HTML;
         $content .= '<div class="container">';
         $i = 0;
@@ -383,17 +386,63 @@ HTML;
                     $content .= "<h4>" . $question['title'] . "</h4><br/>";
                     //Generate Column Chart
                     $content .= $this->generateColumnChart($question['answerCount'], $i);
+                    $content .= $this->generatePieChart($question['answerCount'], $i + 1);
                     $x = 0;
                     foreach ($question['possibleAnswers'] as $answer) {
                         $x++;
                         $content .= '<br />A' . $x . " : " . $answer;
                     }
                     $content .= "<br /><br/>";
-                    $i++;
+                    $i += 2;
                 }
             }
         }
         $content .= '</div>';
+        return $content;
+    }
+
+    private function generatePieChart($questionData, $number)
+    {
+        $content = "";
+        $content .= <<<HTML
+                    <script type="text/javascript">
+
+
+                      google.setOnLoadCallback(drawPieChart);
+
+                      function drawPieChart() {
+                        var data = new google.visualization.arrayToDataTable(
+HTML;
+
+        //Build the JSON Data for the graph
+        $graphData = array();
+
+        //Push graph header data first
+        array_push($graphData, array('Answer', 'Count', array('role' => 'style')));
+        //Check if question had no answer option
+        $i = $questionData['0']['A0'] != null ? 0 : 1;
+
+        foreach ($questionData as $responseData) {
+            array_push($graphData, array('A' . $i, $responseData['A' . $i], '#b87333'));
+            $i++;
+        }
+
+
+        $content .= json_encode($graphData);
+
+        $content .= <<<HTML
+                        );
+
+                        var options = {
+                          width: 900
+                        };
+
+                      var chart = new google.visualization.PieChart(document.getElementById('dual_y_div $number'));
+                      chart.draw(data, options);
+                    };
+                </script>
+                <div id="dual_y_div $number" style="width: 900px; height: 500px;"></div>
+HTML;
         return $content;
     }
 
@@ -409,10 +458,9 @@ HTML;
         $content .= <<<HTML
                     <script type="text/javascript">
 
-                      google.load("visualization", "1.1", {packages:["bar"]});
-                      google.setOnLoadCallback(drawStuff);
+                      google.setOnLoadCallback(drawColumnChart);
 
-                      function drawStuff() {
+                      function drawColumnChart() {
                         var data = new google.visualization.arrayToDataTable(
 HTML;
 
@@ -424,8 +472,8 @@ HTML;
         //Check if question had no answer option
         $i = $questionData['0']['A0'] != null ? 0 : 1;
 
-        foreach($questionData  as $responseData){
-            array_push($graphData, array('A'.$i, $responseData['A'.$i], '#b87333'));
+        foreach ($questionData as $responseData) {
+            array_push($graphData, array('A' . $i, $responseData['A' . $i], '#b87333'));
             $i++;
         }
 
@@ -453,7 +501,6 @@ HTML;
                 </script>
                 <div id="dual_y_div $number" style="width: 900px; height: 500px;"></div>
 HTML;
-        $content .= "<pre>".json_encode($graphData)."</pre>";
         return $content;
     }
 
