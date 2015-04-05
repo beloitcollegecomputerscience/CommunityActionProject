@@ -241,12 +241,12 @@ HTML;
             //TODO give question group name a better name
             $query = "SELECT
               q.sid, q.gid, q.qid, q.question
-              FROM questions q
+              FROM {{questions}} q
               INNER JOIN groups g ON g.gid = q.gid
               WHERE g.group_name = 'Community Action\'s Core Questions 03/04/2015'
               AND q.sid IN (SELECT
                 survey_id
-                FROM community_action_program_enrollment pge
+                FROM {{community_action_program_enrollment}} pge
                 INNER JOIN community_action_programs pg ON pge.programName = pg.programName
                 WHERE pg.programName ='" . $program . "')
                 GROUP BY q.qid";
@@ -269,9 +269,13 @@ HTML;
                 //build up string representing this questions responses column name in DB
                 $questionString = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
                 //Build up rest of query
-                $responsesQuery = "SELECT  `" . $questionString . "`  AS AnswerValue, COUNT(*) AS `Count` FROM lime_survey.survey_"
-                    . $questionRow['sid'] . " GROUP BY `" . $questionString . "`";
+                $sid = $questionRow['sid']; // must do this can't do {{}} escape and access an array element
+                $responsesQuery = "SELECT  `" . $questionString
+                    . "`AS AnswerValue, COUNT(*) AS `Count` FROM {{survey_$sid}} GROUP BY `"
+                    . $questionString . "`";
+
                 //TODO add ability to filter on date ranges here
+
                 //execute query
                 $responsesResults = Yii::app()->db->createCommand($responsesQuery)->query();
 
@@ -298,7 +302,7 @@ HTML;
 
                 //Get all possible answers for current question
                 $answersQuery = " SELECT `code` AS AnswerValue, answer AS AnswerText
-                              FROM lime_survey.answers
+                              FROM {{answers}}
                               WHERE qid = " . $questionRow['qid'];
                 $answersResults = Yii::app()->db->createCommand($answersQuery)->query();
                 //Read first result
