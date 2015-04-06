@@ -59,7 +59,7 @@ class Report extends PluginBase
             $menu = $event->get('menu', array());
             $menu['items']['left'][] = array(
                 //TODO This breaks if you click the link again from the manage program page
-                'href' => "//".$_SERVER[HTTP_HOST]."plugins/direct?plugin=Report&function=managePrograms", //TODO Grab URL and make dynamic here
+                'href' => "plugins/direct?plugin=Report&function=managePrograms", //TODO Grab URL and make dynamic here
                 'alt' => gT('CA Report'),
                 'image' => 'chart_bar.png',
             );
@@ -117,20 +117,42 @@ class Report extends PluginBase
             $this->pluginManager->getAPI()->setFlash('The program: \'' . $programToAdd . '\' already exists.');
         }
 
-        // Build up UI representing the programs
+        // Build up UI representing the programs and their associated surveys
         $list = "";
         $checkboxes = "";
         $x = 0;
-        foreach ($existingPrograms as $programToAdd) {
-            if ($programToAdd != $this->defaultProgram) {
-                $list = $list . "$programToAdd<br/>";
 
-                $checkboxes .= '<div class="checkbox">
-                                 <label>
-                                <input type="checkbox" value="' . $programToAdd . '" name="programs[' . $x++ . ']">
-                                ' . $programToAdd . '
+        $currentProgram = "";
+
+        $programEnrollementQuery = "SELECT *
+FROM {{community_action_program_enrollment}}
+ORDER BY programName;";
+        $programEnrollementResults = Yii::app()->db->createCommand($programEnrollementQuery)->query();
+        foreach ($programEnrollementResults->readAll() as $programToAdd) {
+            if ($programToAdd != $this->defaultProgram) {
+                if ($programToAdd["programName"] != $currentProgram) {
+                    $list = $list . $programToAdd["programName"] . "<br/>";
+                    $checkboxes .= '<div class="checkbox">
+                                 <label><strong>
+                                ' . $programToAdd["programName"] . '
+                                </strong>
                                 </label>
                                 </div>';
+                    $checkboxes .= '<div class="checkbox" style="text-indent: 1em;">
+                                 <label>
+                                <input type="checkbox" value="' . $programToAdd["survey_id"] . '" name="programs[' . $x++ . ']">
+                                ' . $programToAdd["survey_id"] . '
+                                </label>
+                                </div>';
+                    $currentProgram = $programToAdd["programName"];
+                } else {
+                    $checkboxes .= '<div class="checkbox" style="text-indent: 1em;">
+                                 <label>
+                                <input type="checkbox" value="' . $programToAdd["survey_id"] . '" name="programs[' . $x++ . ']">
+                                ' . $programToAdd["survey_id"] . '
+                                </label>
+                                </div>';
+                }
             }
         }
         // TODO do we want the ability to delete programs??
@@ -148,8 +170,8 @@ HTML;
         //$content is what is rendered to page
         $content = '<div class="container"style="margin-bottom: 20px">' . $form . '<h5>Programs:</h5>' . $list . '</div>';
 
-        //Generate Report Form
 
+        //Generate Report Form
         $content .= '<div class="container" style="margin-bottom: 20px"><h5>Generate Report</h5>';
 
         $content .= '<form name="generateReport" method="GET" action="direct">
@@ -185,7 +207,7 @@ HTML;
 
         //Check for if this survey is already associated with a program if not set to default value
         $programEnrollment = $this->api->newModel($this, 'program_enrollment');
-        $results = $programEnrollment->findAll('survey_id=:sid', array(':sid' => $survey_id));
+        $results = $programEnrollment->findAll('survey_id=:sid', array(':sidzz' => $survey_id));
         $program = CHtml::listData($results, "survey_id", "programName");
         //If survey is associated set drop down menus current value to that program
         $current = $results == null ? $this->defaultProgram : $program;
@@ -230,15 +252,16 @@ HTML;
 
     /**---Helper Functions---**/
 
+
     /**
-     * @param $inputPrograms the names of all the programs we want to generate reports for
+     * @param $surveysToInclude the names of all the programs we want to generate reports for
      * @return array the data we need to generate a report
      */
-    private function getReportData($inputPrograms)
+    private function getReportData($surveysToInclude)
     {
         //Holds general information about all program
         $programs = array();
-        foreach ($inputPrograms as $program) {
+        foreach ($surveysToInclude as $surveryID) {
 
             //TODO give question group name a better name
             $query = "SELECT
@@ -246,12 +269,8 @@ HTML;
               FROM {{questions}} q
               INNER JOIN {{groups}} g ON g.gid = q.gid
               WHERE g.group_name = 'Community Action\'s Core Questions 03/04/2015'
-              AND q.sid IN (SELECT
-                survey_id
-                FROM {{community_action_program_enrollment}} pge
-                INNER JOIN {{community_action_programs}} pg ON pge.programName = pg.programName
-                WHERE pg.programName ='" . $program . "')
-                GROUP BY q.qid";
+              AND q.sid = $surveryID
+              GROUP BY q.qid";
 
             //get all questions associated with current program
             $results = Yii::app()->db->createCommand($query)->query();
@@ -259,7 +278,7 @@ HTML;
             //Holds general data about each program
             $programData = array();
             $programData['surveys'] = array();
-            $programData['title'] = $program;
+
 
             //Holds general data about current survey
             $surveyData = array();
@@ -274,9 +293,13 @@ HTML;
                     //Only add previous survey to programData if not initial pass
                     if ($currentSurvey != '') {
                         array_push($programData['surveys'], $surveyData);
-                        $programData['title'] = $program;
+                        $programData['title'] = $surveryID;
                         $surveyData = array(); // Reset survey array for new survey's questions
                         $surveyData['questions'] = array();
+                    }else{
+                        $programEnrollment = $this->api->newModel($this, 'program_enrollment');
+                        $titleresults = $programEnrollment->find('survey_id=:sid', array(':sid' => $questionRow['sid']));
+                        $programData['title'] = $titleresults["programName"];
                     }
                     $currentSurvey = $questionRow['sid'];
                     $surveyData['title'] = $questionRow['sid']; //TODO Could query for survey title to show instead of ID
