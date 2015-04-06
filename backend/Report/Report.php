@@ -177,8 +177,6 @@ HTML;
         $content .= '<form name="generateReport" method="GET" action="direct">
 <input type="text" name="plugin" value="Report" style="display: none">
 <input type="text" name="function" value="generateReport" style="display: none">
- <input type="datetime" name="startDate"/>
-  <input type="datetime" name="endDate"/>
 ' . $checkboxes . '
 <input type="submit" value="Generate Report">
 </form></div>';
@@ -207,7 +205,7 @@ HTML;
 
         //Check for if this survey is already associated with a program if not set to default value
         $programEnrollment = $this->api->newModel($this, 'program_enrollment');
-        $results = $programEnrollment->findAll('survey_id=:sid', array(':sidzz' => $survey_id));
+        $results = $programEnrollment->findAll('survey_id=:sid', array(':sid' => $survey_id));
         $program = CHtml::listData($results, "survey_id", "programName");
         //If survey is associated set drop down menus current value to that program
         $current = $results == null ? $this->defaultProgram : $program;
