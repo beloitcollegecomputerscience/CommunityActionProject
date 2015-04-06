@@ -242,7 +242,7 @@ HTML;
             $query = "SELECT
               q.sid, q.gid, q.qid, q.question
               FROM {{questions}} q
-              INNER JOIN groups g ON g.gid = q.gid
+              INNER JOIN {{groups}} g ON g.gid = q.gid
               WHERE g.group_name = 'Community Action\'s Core Questions 03/04/2015'
               AND q.sid IN (SELECT
                 survey_id
