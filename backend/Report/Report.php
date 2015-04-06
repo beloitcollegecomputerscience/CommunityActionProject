@@ -59,7 +59,7 @@ class Report extends PluginBase
             $menu = $event->get('menu', array());
             $menu['items']['left'][] = array(
                 //TODO This breaks if you click the link again from the manage program page
-                'href' => "plugins/direct?plugin=Report&function=managePrograms",
+                'href' => "//".$_SERVER[HTTP_HOST]."plugins/direct?plugin=Report&function=managePrograms", //TODO Grab URL and make dynamic here
                 'alt' => gT('CA Report'),
                 'image' => 'chart_bar.png',
             );
@@ -155,6 +155,8 @@ HTML;
         $content .= '<form name="generateReport" method="GET" action="direct">
 <input type="text" name="plugin" value="Report" style="display: none">
 <input type="text" name="function" value="generateReport" style="display: none">
+ <input type="datetime" name="startDate"/>
+  <input type="datetime" name="endDate"/>
 ' . $checkboxes . '
 <input type="submit" value="Generate Report">
 </form></div>';
@@ -247,7 +249,7 @@ HTML;
               AND q.sid IN (SELECT
                 survey_id
                 FROM {{community_action_program_enrollment}} pge
-                INNER JOIN community_action_programs pg ON pge.programName = pg.programName
+                INNER JOIN {{community_action_programs}} pg ON pge.programName = pg.programName
                 WHERE pg.programName ='" . $program . "')
                 GROUP BY q.qid";
 
