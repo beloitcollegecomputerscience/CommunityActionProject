@@ -415,7 +415,8 @@ HTML;
                     //Generate Column Chart
                     $content .= $this->generateColumnChart($question['answerCount'], $i);
                     $content .= $this->generatePieChart($question['answerCount'], $i + 1);
-                    $x = 0;
+
+                    $x = $question['answerCount']['0']['A0'] != null ? 1 : 0;
                     foreach ($question['possibleAnswers'] as $answer) {
                         $content .= '<br />A' . $x . " : " . $answer;
                         $x++;
