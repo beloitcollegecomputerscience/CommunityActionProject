@@ -266,22 +266,10 @@ HTML;
             // Loop through all returned questions and organize by their related surveys
             $currentSurvey = '';
             foreach ($results->readAll() as $questionRow) {
-                //build up string representing this questions responses column name in DB
-                $questionString = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
-                //Build up rest of query
-                $sid = $questionRow['sid']; // must do this can't do {{}} escape and access an array element
-                $responsesQuery = "SELECT  `" . $questionString
-                    . "`AS AnswerValue, COUNT(*) AS `Count` FROM {{survey_$sid}} GROUP BY `"
-                    . $questionString . "`";
 
-                //TODO add ability to filter on date ranges here
-
-                //execute query
-                $responsesResults = Yii::app()->db->createCommand($responsesQuery)->query();
-
-                //check for if onto a new survey
+                //check if onto a new survey
                 if ($currentSurvey != $questionRow['sid']) {
-                    //Only add previous survey if not initial pass
+                    //Only add previous survey to programData if not initial pass
                     if ($currentSurvey != '') {
                         array_push($programData['surveys'], $surveyData);
                         $programData['title'] = $program;
@@ -293,6 +281,21 @@ HTML;
 
                 }
 
+                // *** Get Survey Responses ***
+
+                //build up string representing this questions responses column name in DB
+                $questionString = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
+                //Build up rest of query
+                $sid = $questionRow['sid']; // must do this here can't do inline
+                $responsesQuery = "SELECT  `" . $questionString
+                    . "`AS AnswerValue, COUNT(*) AS `Count` FROM {{survey_$sid}} GROUP BY `"
+                    . $questionString . "`";
+
+                //TODO add ability to filter on date ranges here
+
+                //execute query
+                $responsesResults = Yii::app()->db->createCommand($responsesQuery)->query();
+
                 //This holds general information about each question
                 $questionData = array();
                 $questionData['title'] = flattenText($questionRow['question']);
@@ -300,7 +303,8 @@ HTML;
                 //Holds current questions data in a graph-able format
                 $answerCount = array();
 
-                //Get all possible answers for current question
+                // *** Get all possible answers for current question ***
+
                 $answersQuery = " SELECT `code` AS AnswerValue, answer AS AnswerText
                               FROM {{answers}}
                               WHERE qid = " . $questionRow['qid'];
@@ -311,33 +315,29 @@ HTML;
                 //Loop through all returned user results
                 foreach ($responsesResults->readAll() as $responseRow) {
 
-                    $done = false;
-                    //TODO This is not totally right yet there is still a bug with data holes after the intial no answer count!
-                    while ($responseRow['AnswerValue'] != $currentAnswer['AnswerValue'] && $currentAnswer && !$done) {
+                    // Must have this check for if the question was optional and has no answer result
+                    if ($responseRow['AnswerValue'] == "") {
+                        array_push($answerCount, array('A0' => (int)$responseRow['Count']));
+                        array_push($questionData['possibleAnswers'], 'No answer');
+                    } else {
                         //Fill Data Holes until next answer has value
-                        if ($responseRow['AnswerValue'] == "") {
-                            print_r($done);
-                            // Must have this check for if the question was optional!
-                            array_push($answerCount, array('A0' => (int)$responseRow['Count'])); //If that was an option put at A0
-                            array_push($questionData['possibleAnswers'], 'No answer');
-                            $done = true;
-                        } else {
+                        while ($responseRow['AnswerValue'] != $currentAnswer['AnswerValue'] && $currentAnswer) {
                             array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
                             array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
                             $currentAnswer = $answersResults->read();
                         }
+                        //Push valid answer count and value if it exists
+                        if ($currentAnswer) {
+                            array_push($answerCount, array($currentAnswer['AnswerValue'] => (int)$responseRow['Count']));
+                            array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
+
+                        }
+                        // Move to next answer result
+                        $currentAnswer = $answersResults->read();
                     }
 
-                    if ($currentAnswer) {
-                        //Push valid answer count and value
-                        array_push($answerCount, array($currentAnswer['AnswerValue'] => (int)$responseRow['Count']));
-                        array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
-
-                    }
-                    // Move to next answer result
-                    $currentAnswer = $answersResults->read();
                 }
-                //TODO If we make question optional then it leaves a hole in the answer text
+
                 //Fill trailing data holes
                 if ($currentAnswer) {
                     array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
@@ -345,7 +345,7 @@ HTML;
                     $currentAnswer = $answersResults->read();
                     while ($currentAnswer) {
                         array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
-                        array_push($questionData['possibleAnswers'], (int)$currentAnswer['AnswerText']);
+                        array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
                         $currentAnswer = $answersResults->read();
                     }
                 }
@@ -358,6 +358,7 @@ HTML;
             array_push($programData['surveys'], $surveyData);
             array_push($programs, $programData);
         }
+        //uncomment lines below for helpful debugging view of data structure
 //        print_r('<pre>');
 //        print_r($programs);
         return $programs;
@@ -393,8 +394,8 @@ HTML;
                     $content .= $this->generatePieChart($question['answerCount'], $i + 1);
                     $x = 0;
                     foreach ($question['possibleAnswers'] as $answer) {
-                        $x++;
                         $content .= '<br />A' . $x . " : " . $answer;
+                        $x++;
                     }
                     $content .= "<br /><br/>";
                     $i += 2;
@@ -480,7 +481,6 @@ HTML;
             array_push($graphData, array('A' . $i, $responseData['A' . $i], '#b87333'));
             $i++;
         }
-
 
         $content .= json_encode($graphData);
 
