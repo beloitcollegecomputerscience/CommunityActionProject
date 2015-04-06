@@ -69,6 +69,72 @@ class Report extends PluginBase
     }
 
     /**
+     * Add extra tab for additional settings for a survey. Allows survey
+     * creator to associate a survey with a Community Action program.
+     **/
+    public function beforeSurveySettings()
+    {
+        // Get this surveys ID
+        $event = $this->getEvent();
+        $survey_id = $event->get('survey');
+
+        // Grab all entry's from program table to populate drop down with
+        $existingPrograms = $this->getPrograms();
+
+        // This creates the array of options that we will feed in to the event below.
+        $options = array();
+        foreach ($existingPrograms as $program) {
+            $options[$program] = $program;
+        }
+
+        //Check for if this survey is already associated with a program if not set to default value
+        $programEnrollment = $this->api->newModel($this, 'program_enrollment');
+        $results = $programEnrollment->findAll('survey_id=:sid', array(':sid' => $survey_id));
+        $program = CHtml::listData($results, "survey_id", "programName");
+        //If survey is associated set drop down menus current value to that program
+        $current = $results == null ? $this->defaultProgram : $program;
+
+        //Custom settings for survey
+        $event->set("surveysettings.{$this->id}", array(
+            'name' => get_class($this),
+            'settings' => array(
+                'program_enrollment' => array(
+                    // Select = Drop down menu
+                    'type' => 'select',
+                    'options' => $options,
+                    'current' => $current
+                ),
+            ),
+        ));
+    }
+
+    /**
+     * Triggered each time a surveys settings change. Loops through all settings and saves them.
+     */
+    public function newSurveySettings()
+    {
+        $event = $this->getEvent();
+        foreach ($event->get('settings') as $name => $value) {
+            //Catch our custom setting and save in program_enrollment table instead of generic plugin settings table
+            if ($name = "program_enrollment") {
+                $enrollmentModel = $this->api->newModel($this, 'program_enrollment');
+                $surveyID = $event->get('survey');
+                //Delete old record
+                $enrollmentModel->deleteAll('survey_id=:sid', array(':sid' => $surveyID));
+                //Save new one
+                $enrollmentModel->survey_id = $surveyID;
+                $enrollmentModel->programName = $value;
+                $enrollmentModel->save();
+            } else {
+                //Everything else let save where lime survey wants it to be
+                $this->set($name, $value, 'Survey', $event->get('survey'));
+            }
+        }
+    }
+
+    /**---Direct Requests--**/
+
+    /**
      * Handles and parses out function calls from Url's
      **/
     public function newDirectRequest()
@@ -184,69 +250,6 @@ HTML;
         return $content;
     }
 
-    /**
-     * Add extra tab for additional settings for a survey. Allows survey
-     * creator to associate a survey with a Community Action program.
-     **/
-    public function beforeSurveySettings()
-    {
-        // Get this surveys ID
-        $event = $this->getEvent();
-        $survey_id = $event->get('survey');
-
-        // Grab all entry's from program table to populate drop down with
-        $existingPrograms = $this->getPrograms();
-
-        // This creates the array of options that we will feed in to the event below.
-        $options = array();
-        foreach ($existingPrograms as $program) {
-            $options[$program] = $program;
-        }
-
-        //Check for if this survey is already associated with a program if not set to default value
-        $programEnrollment = $this->api->newModel($this, 'program_enrollment');
-        $results = $programEnrollment->findAll('survey_id=:sid', array(':sid' => $survey_id));
-        $program = CHtml::listData($results, "survey_id", "programName");
-        //If survey is associated set drop down menus current value to that program
-        $current = $results == null ? $this->defaultProgram : $program;
-
-        //Custom settings for survey
-        $event->set("surveysettings.{$this->id}", array(
-            'name' => get_class($this),
-            'settings' => array(
-                'program_enrollment' => array(
-                    // Select = Drop down menu
-                    'type' => 'select',
-                    'options' => $options,
-                    'current' => $current
-                ),
-            ),
-        ));
-    }
-
-    /**
-     * Triggered each time a surveys settings change. Loops through all settings and saves them.
-     */
-    public function newSurveySettings()
-    {
-        $event = $this->getEvent();
-        foreach ($event->get('settings') as $name => $value) {
-            //Catch our custom setting and save in program_enrollment table instead of generic plugin settings table
-            if ($name = "program_enrollment") {
-                $enrollmentModel = $this->api->newModel($this, 'program_enrollment');
-                $surveyID = $event->get('survey');
-                //Delete old record
-                $enrollmentModel->deleteAll('survey_id=:sid', array(':sid' => $surveyID));
-                //Save new one
-                $enrollmentModel->survey_id = $surveyID;
-                $enrollmentModel->programName = $value;
-                $enrollmentModel->save();
-            } else {
-                //Everything else let save where lime survey wants it to be
-                $this->set($name, $value, 'Survey', $event->get('survey'));
-            }
-        }
-    }
 
     /**---Helper Functions---**/
 
@@ -294,7 +297,7 @@ HTML;
                         $programData['title'] = $surveryID;
                         $surveyData = array(); // Reset survey array for new survey's questions
                         $surveyData['questions'] = array();
-                    }else{
+                    } else {
                         $programEnrollment = $this->api->newModel($this, 'program_enrollment');
                         $titleresults = $programEnrollment->find('survey_id=:sid', array(':sid' => $questionRow['sid']));
                         $programData['title'] = $titleresults["programName"];
@@ -430,6 +433,12 @@ HTML;
         return $content;
     }
 
+    /**
+     * Generates a google pie chart
+     * @param $graphData question data to generate
+     * @param $number numberOf Chart we are generating
+     * @return string The html Markup for the graph
+     */
     private function generatePieChart($questionData, $number)
     {
         $content = "";
@@ -445,18 +454,14 @@ HTML;
 
         //Build the JSON Data for the graph
         $graphData = array();
-
         //Push graph header data first
         array_push($graphData, array('Answer', 'Count', array('role' => 'style')));
         //Check if question had no answer option
         $i = $questionData['0']['A0'] != null ? 0 : 1;
-
         foreach ($questionData as $responseData) {
             array_push($graphData, array('A' . $i, $responseData['A' . $i], '#b87333'));
             $i++;
         }
-
-
         $content .= json_encode($graphData);
 
         $content .= <<<HTML
@@ -571,4 +576,4 @@ HTML;
     }
 }
 
-?>
+?> 
