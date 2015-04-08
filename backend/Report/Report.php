@@ -159,7 +159,8 @@ class Report extends PluginBase
     {
         //Get all programs user wants a report on from form post
         $inputPrograms = $_GET['programs'];
-        $content = $this->buildReportUI($this->getReportData($inputPrograms));
+        $featureYear = $_GET['yearToFeature'];
+        $content = $this->buildReportUI($this->getReportData($inputPrograms, $featureYear));
         return $content;
     }
 
@@ -191,13 +192,14 @@ class Report extends PluginBase
         $currentProgram = "";
 
         $programEnrollementQuery = "SELECT *
-FROM {{community_action_program_enrollment}}
-ORDER BY programName;";
+            FROM {{community_action_program_enrollment}}
+            ORDER BY programName";
+
         $programEnrollementResults = Yii::app()->db->createCommand($programEnrollementQuery)->query();
         foreach ($programEnrollementResults->readAll() as $programToAdd) {
             if ($programToAdd != $this->defaultProgram) {
                 if ($programToAdd["programName"] != $currentProgram) {
-                    $list = $list . $programToAdd["programName"] . "<br/>";
+                    $list = $list . $programToAdd["programName"] . "<br/>"; //TODO Draw from programs table to build up this list
                     $checkboxes .= '<div class="checkbox">
                                  <label><strong>
                                 ' . $programToAdd["programName"] . '
@@ -234,15 +236,18 @@ ORDER BY programName;";
 HTML;
 
         //$content is what is rendered to page
-        $content = '<div class="container"style="margin-bottom: 20px">' . $form . '<h5>Programs:</h5>' . $list . '</div>';
-
+        $content = '<div class="container well"style="margin-bottom: 20px">' . $form . '<h5>Programs:</h5>' . $list . '</div>';
 
         //Generate Report Form
-        $content .= '<div class="container" style="margin-bottom: 20px"><h5>Generate Report</h5>';
+        $content .= '<div class="container well" style="margin-bottom: 20px"><h4>Generate Report</h4>';
 
         $content .= '<form name="generateReport" method="GET" action="direct">
 <input type="text" name="plugin" value="Report" style="display: none">
 <input type="text" name="function" value="generateReport" style="display: none">
+Year to feature:
+<select name="yearToFeature">
+    <option selected>2015</option>
+</select>
 ' . $checkboxes . '
 <input type="submit" value="Generate Report">
 </form></div>';
@@ -258,7 +263,7 @@ HTML;
      * @param $surveysToInclude the names of all the programs we want to generate reports for
      * @return array the data we need to generate a report
      */
-    private function getReportData($surveysToInclude)
+    private function getReportData($surveysToInclude, $yearToFeature)
     {
         //Array to hold all surveys to Return
         $surveys = array();
@@ -280,9 +285,12 @@ HTML;
 
             //Check for if this survey uses tokens
             if (!is_null(Yii::app()->db->schema->getTable("{{tokens_$surveyID}}"))) {
+                //Get total # of tokens created for this survey
                 $surveyData['tokenCount'] = Yii::app()->db->createCommand(
                     "Select COUNT(*) as tokensCreated
-                FROM {{tokens_$surveyID}}"
+                FROM {{tokens_$surveyID}}
+                WHERE sent NOT LIKE 'N'
+                AND YEAR(sent) = $yearToFeature" //Only count tokens that have actually been sent and are in featured year
                 )->query()->read()["tokensCreated"];
             }
 
@@ -400,7 +408,9 @@ HTML;
             $content .= '<br/><br/>';
 
             $content .= "<h2>" . $survey['title'] . "  <br />Program: " . $survey["programTitle"] . "</h2>";
-
+            if (!is_null($survey['tokenCount'])) {
+                $content .= "Surveys sent out: " . $survey['tokenCount'] . "<br/>";
+            }
             foreach ($survey['questions'] as $question) {
                 $content .= "<h4>" . $question['title'] . "</h4><br/>";
                 //Generate Column Chart
@@ -409,7 +419,7 @@ HTML;
 
                 $x = $question['answerCount']['0']['A0'] != null ? 0 : 1;
                 foreach ($question['possibleAnswers'] as $answer) {
-                    $content .= '<br />A' . $x . " : " . $answer;
+                    $content .= '<br/>A' . $x . " : " . $answer;
                     $x++;
                 }
                 $content .= "<br /><br/>";
