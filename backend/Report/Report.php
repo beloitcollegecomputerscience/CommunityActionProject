@@ -264,7 +264,6 @@ HTML;
         $surveys = array();
         foreach ($surveysToInclude as $surveyID) {
 
-
             //Get all questions associated with current survey TODO give question group name a better name
             $query = "SELECT
               q.sid, q.gid, q.qid, q.question
@@ -278,6 +277,14 @@ HTML;
             //Holds general data about current survey
             $surveyData = array();
             $surveyData['questions'] = array();
+
+            //Check for if this survey uses tokens
+            if (!is_null(Yii::app()->db->schema->getTable("{{tokens_$surveyID}}"))) {
+                $surveyData['tokenCount'] = Yii::app()->db->createCommand(
+                    "Select COUNT(*) as tokensCreated
+                FROM {{tokens_$surveyID}}"
+                )->query()->read()["tokensCreated"];
+            }
 
             // Loop through all questions for current survey
             foreach ($results->readAll() as $questionRow) {
