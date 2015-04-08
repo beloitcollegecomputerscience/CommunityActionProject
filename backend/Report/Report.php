@@ -287,6 +287,9 @@ HTML;
                 $titleResults = $programEnrollment->find('survey_id=:sid', array(':sid' => $surveyID));
                 $surveyData['programTitle'] = $titleResults["programName"];
 
+                //Get surveys title
+                $titleResults = SurveyLanguageSetting::model()->findByAttributes(array('surveyls_survey_id' => $surveyID, 'surveyls_language' => 'en'));
+                $surveyData['title'] = $titleResults->surveyls_title;
 
 
                 // *** Get Survey Responses ***
