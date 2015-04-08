@@ -260,52 +260,34 @@ HTML;
      */
     private function getReportData($surveysToInclude)
     {
-        //Holds general information about all program
-        $programs = array();
-        foreach ($surveysToInclude as $surveryID) {
+        //Array to hold all surveys to Return
+        $surveys = array();
+        foreach ($surveysToInclude as $surveyID) {
 
-            //TODO give question group name a better name
+
+            //Get all questions associated with current survey TODO give question group name a better name
             $query = "SELECT
               q.sid, q.gid, q.qid, q.question
               FROM {{questions}} q
               INNER JOIN {{groups}} g ON g.gid = q.gid
               WHERE g.group_name = 'Community Action\'s Core Questions 03/04/2015'
-              AND q.sid = $surveryID
+              AND q.sid = $surveyID
               GROUP BY q.qid";
-
-            //get all questions associated with current program
             $results = Yii::app()->db->createCommand($query)->query();
-
-            //Holds general data about each program
-            $programData = array();
-            $programData['surveys'] = array();
-
 
             //Holds general data about current survey
             $surveyData = array();
             $surveyData['questions'] = array();
 
-            // Loop through all returned questions and organize by their related surveys
-            $currentSurvey = '';
+            // Loop through all questions for current survey
             foreach ($results->readAll() as $questionRow) {
 
-                //check if onto a new survey
-                if ($currentSurvey != $questionRow['sid']) {
-                    //Only add previous survey to programData if not initial pass
-                    if ($currentSurvey != '') {
-                        array_push($programData['surveys'], $surveyData);
-                        $programData['title'] = $surveryID;
-                        $surveyData = array(); // Reset survey array for new survey's questions
-                        $surveyData['questions'] = array();
-                    } else {
-                        $programEnrollment = $this->api->newModel($this, 'program_enrollment');
-                        $titleresults = $programEnrollment->find('survey_id=:sid', array(':sid' => $questionRow['sid']));
-                        $programData['title'] = $titleresults["programName"];
-                    }
-                    $currentSurvey = $questionRow['sid'];
-                    $surveyData['title'] = $questionRow['sid']; //TODO Could query for survey title to show instead of ID
+                //Get program associated with this survey
+                $programEnrollment = $this->api->newModel($this, 'program_enrollment');
+                $titleResults = $programEnrollment->find('survey_id=:sid', array(':sid' => $surveyID));
+                $surveyData['programTitle'] = $titleResults["programName"];
 
-                }
+
 
                 // *** Get Survey Responses ***
 
@@ -380,21 +362,20 @@ HTML;
                 $questionData['answerCount'] = $answerCount;
                 array_push($surveyData['questions'], $questionData);
             }
-
-            array_push($programData['surveys'], $surveyData);
-            array_push($programs, $programData);
+            //Push Final survey
+            array_push($surveys, $surveyData);
         }
         //uncomment lines below for helpful debugging view of data structure
 //        print_r('<pre>');
-//        print_r($programs);
-        return $programs;
+//        print_r($surveys);
+        return $surveys;
     }
 
     /**
-     * @param $programs the data needed to populate the report
+     * @param $surveys the data needed to populate the report
      * @return string the html content we want rendered as the actual report
      */
-    private function buildReportUI($programs)
+    private function buildReportUI($surveys)
     {
         //Add google charts  dependency and all chart types we need
         $content = <<<HTML
@@ -405,28 +386,24 @@ HTML;
 HTML;
         $content .= '<div class="container">';
         $i = 0;
-        foreach ($programs as $program) {
+        foreach ($surveys as $survey) {
             $content .= '<br/><br/>';
-            $content .= "<h1>Program Name: " . $program['title'] . "</h1>";
-            $content .= '<br/>';
-            foreach ($program['surveys'] as $survey) {
 
-                $content .= "<h2>Survey ID:" . $survey['title'] . "</h2>";
+            $content .= "<h2>" . $survey['title'] . "  <br />Program: " . $survey["programTitle"] . "</h2>";
 
-                foreach ($survey['questions'] as $question) {
-                    $content .= "<h4>" . $question['title'] . "</h4><br/>";
-                    //Generate Column Chart
-                    $content .= $this->generateColumnChart($question['answerCount'], $i);
-                    $content .= $this->generatePieChart($question['answerCount'], $i + 1);
+            foreach ($survey['questions'] as $question) {
+                $content .= "<h4>" . $question['title'] . "</h4><br/>";
+                //Generate Column Chart
+                $content .= $this->generateColumnChart($question['answerCount'], $i);
+                $content .= $this->generatePieChart($question['answerCount'], $i + 1);
 
-                    $x = $question['answerCount']['0']['A0'] != null ? 0 : 1;
-                    foreach ($question['possibleAnswers'] as $answer) {
-                        $content .= '<br />A' . $x . " : " . $answer;
-                        $x++;
-                    }
-                    $content .= "<br /><br/>";
-                    $i += 2;
+                $x = $question['answerCount']['0']['A0'] != null ? 0 : 1;
+                foreach ($question['possibleAnswers'] as $answer) {
+                    $content .= '<br />A' . $x . " : " . $answer;
+                    $x++;
                 }
+                $content .= "<br /><br/>";
+                $i += 2;
             }
         }
         $content .= '</div>';
