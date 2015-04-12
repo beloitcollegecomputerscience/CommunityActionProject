@@ -361,7 +361,6 @@ Year to feature:
                         // Move to next answer result
                         $currentAnswer = $answersResults->read();
                     }
-
                 }
 
                 //Fill trailing data holes
@@ -380,7 +379,17 @@ Year to feature:
                 $questionData['answerCount'] = $answerCount;
                 array_push($surveyData['questions'], $questionData);
             }
-            //Push Final survey
+
+            //Get total survey responses
+            $surveyData['totalResponses'] = 0;
+            //Just look at how many responses there were to the first question
+            $x = $surveyData['questions'][0]['answerCount']['0']['A0'] != null ? 0 : 1;
+            foreach ($surveyData['questions'][0]['answerCount'] as $question) {
+                $surveyData['totalResponses'] += (int)$question['A'.$x];
+                $x++;
+            }
+
+            //Push survey survey data
             array_push($surveys, $surveyData);
         }
         //uncomment lines below for helpful debugging view of data structure
@@ -411,8 +420,10 @@ HTML;
             if (!is_null($survey['tokenCount'])) {
                 $content .= "Surveys sent out: " . $survey['tokenCount'] . "<br/>";
             }
+            $content .= "Responses received: " . $survey['totalResponses'] . "<br/>";
             foreach ($survey['questions'] as $question) {
                 $content .= "<h4>" . $question['title'] . "</h4><br/>";
+//                $content .= "Responses received: " . $question['totalResponses'];
                 //Generate Column Chart
                 $content .= $this->generateColumnChart($question['answerCount'], $i);
                 $content .= $this->generatePieChart($question['answerCount'], $i + 1);
