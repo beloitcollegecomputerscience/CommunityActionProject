@@ -274,8 +274,8 @@ Year to feature:
               q.sid, q.gid, q.qid, q.question
               FROM {{questions}} q
               INNER JOIN {{groups}} g ON g.gid = q.gid
-              WHERE g.group_name = 'Community Action\'s Core Questions 03/04/2015'
-              AND q.sid = $surveyID
+              WHERE q.sid = $surveyID
+              AND g.group_name = 'Community Action\'s Core Questions 03/04/2015'
               GROUP BY q.qid";
             $results = Yii::app()->db->createCommand($query)->query();
 
