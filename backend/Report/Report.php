@@ -160,7 +160,7 @@ class Report extends PluginBase
         //Get all programs user wants a report on from form post
         $inputPrograms = $_GET['programs'];
         $featureYear = $_GET['yearToFeature'];
-        $content = $this->buildReportUI($this->getReportData($inputPrograms, $featureYear));
+        $content = $this->buildReportUI($this->getReportData($inputPrograms, $featureYear), $featureYear);
         return $content;
     }
 
@@ -263,7 +263,7 @@ Year to feature:
      * @param $surveysToInclude the names of all the programs we want to generate reports for
      * @return array the data we need to generate a report
      */
-    private function getReportData($surveysToInclude, $yearToFeature)
+    private function getReportData($surveysToInclude, $featureYear)
     {
         //Array to hold all surveys to Return
         $surveys = array();
@@ -306,86 +306,120 @@ Year to feature:
                 $titleResults = SurveyLanguageSetting::model()->findByAttributes(array('surveyls_survey_id' => $surveyID, 'surveyls_language' => 'en'));
                 $surveyData['title'] = $titleResults->surveyls_title;
 
-
-                // *** Get Survey Responses ***
-
-                //build up string representing this questions responses column name in DB
-                $questionString = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
-                //Build up rest of query
-                $sid = $questionRow['sid']; // must do this here can't do inline
-                $responsesQuery = "SELECT  `" . $questionString
-                    . "`AS AnswerValue, COUNT(*) AS `Count` FROM {{survey_$sid}} GROUP BY `"
-                    . $questionString . "`";
-
-                //TODO add ability to filter on date ranges here
-
-                //execute query
-                $responsesResults = Yii::app()->db->createCommand($responsesQuery)->query();
-
                 //This holds general information about each question
                 $questionData = array();
                 $questionData['title'] = flattenText($questionRow['question']);
                 $questionData['possibleAnswers'] = array();
-                //Holds current questions data in a graph-able format
-                $answerCount = array();
 
-                // *** Get all possible answers for current question ***
+                //Determine this questions column name in DB
+                $questionString = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
 
-                $answersQuery = " SELECT `code` AS AnswerValue, answer AS AnswerText
+                //Figure out if question is optional
+                if (Yii::app()->db->createCommand(
+                        "SELECT COUNT(*) AS 'count'
+                         FROM {{survey_$surveyID}}
+                         WHERE `$questionString` = ''"
+                    )->query()->read()['count'] > 0
+                ) {
+                    $questionData['isOptional'] = 'true';
+                    array_push($questionData['possibleAnswers'], 'No answer');
+                } else {
+                    $questionData['isOptional'] = 'false';
+                }
+
+                //Get all years of valid data
+                $yearsOfData = Yii::app()->db->createCommand(
+                    "SELECT DISTINCT(year(submitdate)) as 'year' FROM {{survey_$surveyID}}"
+                )->query();
+
+                $firstYear = true;
+                //Loop on each question for each valid year
+                foreach ($yearsOfData->readAll() as $year) {
+
+                    //get current year
+                    $currentYear = $year['year'];
+
+                    // *** Get all possible answers for current question ***
+
+                    $answersQuery = " SELECT `code` AS AnswerValue, answer AS AnswerText
                               FROM {{answers}}
                               WHERE qid = " . $questionRow['qid'];
-                $answersResults = Yii::app()->db->createCommand($answersQuery)->query();
-                //Read first result
-                $currentAnswer = $answersResults->read();
+                    $answersResults = Yii::app()->db->createCommand($answersQuery)->query();
+                    //Read first result
+                    $currentAnswer = $answersResults->read();
 
-                //Loop through all returned user results
-                foreach ($responsesResults->readAll() as $responseRow) {
+                    // *** Get Survey Responses for this year ***
+                    $responsesResults = Yii::app()->db->createCommand("SELECT  `" . $questionString
+                        . "`AS AnswerValue, COUNT(*) AS `Count` FROM {{survey_$surveyID}}
+                        WHERE YEAR(submitdate) = $currentYear
+                        GROUP BY `"
+                        . $questionString . "`")->query();
 
-                    // Must have this check for if the question was optional and has no answer result
-                    if ($responseRow['AnswerValue'] == "") {
-                        array_push($answerCount, array('A0' => (int)$responseRow['Count']));
-                        array_push($questionData['possibleAnswers'], 'No answer');
-                    } else {
-                        //Fill Data Holes until next answer has value
-                        while ($responseRow['AnswerValue'] != $currentAnswer['AnswerValue'] && $currentAnswer) {
-                            array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
-                            array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
+                    //Holds current questions response data by year in a graph-able format
+                    $answerCount = array();
+
+                    //Loop through all returned user results
+                    $firstResponse = true;
+                    foreach ($responsesResults->readAll() as $responseRow) {
+
+                        // Must have this check for if the question was optional and has no answer result
+                        if ($responseRow['AnswerValue'] == "") {
+                            array_push($answerCount, array('A0' => (int)$responseRow['Count']));
+                        } else {
+                            if ($questionData['isOptional'] == 'true' && $firstResponse) {
+                                array_push($answerCount, array('A0' => 0));
+                            }
+                            //Fill Data Holes until next answer has value
+                            while ($responseRow['AnswerValue'] != $currentAnswer['AnswerValue'] && $currentAnswer) {
+                                array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
+                                if ($firstYear) {
+                                    array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
+                                }
+                                $currentAnswer = $answersResults->read();
+                            }
+                            //Push valid answer count and value if it exists
+                            if ($currentAnswer) {
+                                array_push($answerCount, array($currentAnswer['AnswerValue'] => (int)$responseRow['Count']));
+                                if ($firstYear) {
+                                    array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
+                                }
+                            }
+                            // Move to next answer result
                             $currentAnswer = $answersResults->read();
                         }
-                        //Push valid answer count and value if it exists
-                        if ($currentAnswer) {
-                            array_push($answerCount, array($currentAnswer['AnswerValue'] => (int)$responseRow['Count']));
-                            array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
-
-                        }
-                        // Move to next answer result
-                        $currentAnswer = $answersResults->read();
+                        $firstResponse = false;
                     }
-                }
 
-                //Fill trailing data holes
-                if ($currentAnswer) {
-                    array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
-                    array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
-                    $currentAnswer = $answersResults->read();
-                    while ($currentAnswer) {
+                    //Fill trailing data holes
+                    if ($currentAnswer) {
                         array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
-                        array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
+                        if ($firstYear) {
+                            array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
+                        }
                         $currentAnswer = $answersResults->read();
+                        while ($currentAnswer) {
+                            array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
+                            if ($firstYear) {
+                                array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
+                            }
+                            $currentAnswer = $answersResults->read();
+                        }
                     }
-                }
 
-                //Update question and survey data arrays
-                $questionData['answerCount'] = $answerCount;
+                    //Update question and survey data arrays
+                    $questionData['answerCount'][$currentYear] = array();
+                    array_push($questionData['answerCount'][$currentYear], $answerCount);
+                    $firstYear = false;
+                }
                 array_push($surveyData['questions'], $questionData);
             }
 
             //Get total survey responses
             $surveyData['totalResponses'] = 0;
             //Just look at how many responses there were to the first question
-            $x = $surveyData['questions'][0]['answerCount']['0']['A0'] != null ? 0 : 1;
-            foreach ($surveyData['questions'][0]['answerCount'] as $question) {
-                $surveyData['totalResponses'] += (int)$question['A'.$x];
+            $x = $surveyData['questions'][0]['answerCount'][$featureYear]['0']['0']['A0'] != null ? 0 : 1;
+            foreach ($surveyData['questions'][0]['answerCount'][$featureYear]['0'] as $question) {
+                $surveyData['totalResponses'] += (int)$question['A' . $x];
                 $x++;
             }
 
@@ -402,7 +436,7 @@ Year to feature:
      * @param $surveys the data needed to populate the report
      * @return string the html content we want rendered as the actual report
      */
-    private function buildReportUI($surveys)
+    private function buildReportUI($surveys, $yearToFeature)
     {
         //Add google charts  dependency and all chart types we need
         $content = <<<HTML
@@ -423,11 +457,10 @@ HTML;
             $content .= "Responses received: " . $survey['totalResponses'] . "<br/>";
             foreach ($survey['questions'] as $question) {
                 $content .= "<h4>" . $question['title'] . "</h4><br/>";
-//                $content .= "Responses received: " . $question['totalResponses'];
-                //Generate Column Chart
-                $content .= $this->generateColumnChart($question['answerCount'], $i);
-                $content .= $this->generatePieChart($question['answerCount'], $i + 1);
-
+                //Generate Charts
+                $content .= $this->generateColumnChart($question['answerCount'][$yearToFeature], $i);
+                $content .= $this->generatePieChart($question['answerCount'][$yearToFeature], $i + 1);
+                //Build up possible answers list
                 $x = $question['answerCount']['0']['A0'] != null ? 0 : 1;
                 foreach ($question['possibleAnswers'] as $answer) {
                     $content .= '<br/>A' . $x . " : " . $answer;
@@ -465,8 +498,8 @@ HTML;
         //Push graph header data first
         array_push($graphData, array('Answer', 'Count', array('role' => 'style')));
         //Check if question had no answer option
-        $i = $questionData['0']['A0'] != null ? 0 : 1;
-        foreach ($questionData as $responseData) {
+        $i = $questionData['0']['0']['A0'] != null ? 0 : 1;
+        foreach ($questionData['0'] as $responseData) {
             array_push($graphData, array('A' . $i, $responseData['A' . $i], '#b87333'));
             $i++;
         }
@@ -512,9 +545,9 @@ HTML;
         //Push graph header data first
         array_push($graphData, array('Answer', 'Count', array('role' => 'style')));
         //Check if question had no answer option
-        $i = $questionData['0']['A0'] != null ? 0 : 1;
+        $i = $questionData['0']['0']['A0'] != null ? 0 : 1;
 
-        foreach ($questionData as $responseData) {
+        foreach ($questionData['0'] as $responseData) {
             array_push($graphData, array('A' . $i, $responseData['A' . $i], '#b87333'));
             $i++;
         }
