@@ -211,7 +211,7 @@ class Report extends PluginBase
                     $checkboxes .= '<div class="checkbox" style="text-indent: 1em;">
                                  <label>
                                 <input type="checkbox" value="' . $programToAdd["survey_id"] . '" name="programs[' . $x++ . ']">
-                                ' . $programToAdd["survey_id"] . '
+                                ' . $this->getSurveyTitle($programToAdd["survey_id"]) . '
                                 </label>
                                 </div>';
                     $currentProgram = $programToAdd["programName"];
@@ -219,7 +219,7 @@ class Report extends PluginBase
                     $checkboxes .= '<div class="checkbox" style="text-indent: 1em;">
                                  <label>
                                 <input type="checkbox" value="' . $programToAdd["survey_id"] . '" name="programs[' . $x++ . ']">
-                                ' . $programToAdd["survey_id"] . '
+                                ' . $this->getSurveyTitle($programToAdd["survey_id"]) . '
                                 </label>
                                 </div>';
                 }
@@ -305,8 +305,7 @@ Year to feature:
                 $surveyData['programTitle'] = $titleResults["programName"];
 
                 //Get surveys title
-                $titleResults = SurveyLanguageSetting::model()->findByAttributes(array('surveyls_survey_id' => $surveyID, 'surveyls_language' => 'en'));
-                $surveyData['title'] = $titleResults->surveyls_title;
+                $surveyData['title'] = $this->getSurveyTitle($surveyID);
 
                 //This holds general information about each question
                 $questionData = array();
@@ -595,6 +594,13 @@ HTML;
         }
         return false;
 
+    }
+
+    private function getSurveyTitle($surveyID)
+    {
+        //Get surveys title
+        $titleResults = SurveyLanguageSetting::model()->findByAttributes(array('surveyls_survey_id' => $surveyID, 'surveyls_language' => 'en'));
+        return $titleResults->surveyls_title;
     }
 
     /**
