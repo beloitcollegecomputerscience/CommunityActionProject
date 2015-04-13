@@ -290,7 +290,7 @@ Year to feature:
                     "Select COUNT(*) as tokensCreated
                 FROM {{tokens_$surveyID}}
                 WHERE sent NOT LIKE 'N'
-                AND YEAR(sent) = $yearToFeature" //Only count tokens that have actually been sent and are in featured year
+                AND YEAR(sent) = $featureYear" //Only count tokens that have actually been sent and are in featured year
                 )->query()->read()["tokensCreated"];
             }
 
