@@ -191,6 +191,12 @@ class Report extends PluginBase
 
         $currentProgram = "";
 
+        foreach ($existingPrograms as $program) {
+            if ($program != $this->defaultProgram) {
+                $list .= $program . "<br/>";
+            }
+        }
+
         $programEnrollementQuery = "SELECT *
             FROM {{community_action_program_enrollment}}
             ORDER BY programName";
@@ -199,7 +205,6 @@ class Report extends PluginBase
         foreach ($programEnrollementResults->readAll() as $programToAdd) {
             if ($programToAdd != $this->defaultProgram) {
                 if ($programToAdd["programName"] != $currentProgram) {
-                    $list = $list . $programToAdd["programName"] . "<br/>"; //TODO Draw from programs table to build up this list
                     $checkboxes .= '<div class="checkbox">
                                  <label><strong>
                                 ' . $programToAdd["programName"] . '
