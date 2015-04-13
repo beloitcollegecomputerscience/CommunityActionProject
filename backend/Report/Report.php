@@ -184,24 +184,21 @@ class Report extends PluginBase
             $this->pluginManager->getAPI()->setFlash('The program: \'' . $programToAdd . '\' already exists.');
         }
 
-        // Build up UI representing the programs and their associated surveys
+        //Build up list of all programs
         $list = "";
-        $checkboxes = "";
-        $x = 0;
-
-        $currentProgram = "";
-
         foreach ($existingPrograms as $program) {
             if ($program != $this->defaultProgram) {
                 $list .= $program . "<br/>";
             }
         }
 
-        $programEnrollementQuery = "SELECT *
+        // Build up UI representing the programs and their associated surveys
+        $checkboxes = "";
+        $currentProgram = "";
+        $x = 0;
+        $programEnrollementResults = Yii::app()->db->createCommand("SELECT *
             FROM {{community_action_program_enrollment}}
-            ORDER BY programName";
-
-        $programEnrollementResults = Yii::app()->db->createCommand($programEnrollementQuery)->query();
+            ORDER BY programName")->query();
         foreach ($programEnrollementResults->readAll() as $programToAdd) {
             if ($programToAdd != $this->defaultProgram) {
                 if ($programToAdd["programName"] != $currentProgram) {
@@ -345,11 +342,13 @@ Year to feature:
                     $currentYear = $year['year'];
 
                     // *** Get all possible answers for current question ***
-
-                    $answersQuery = " SELECT `code` AS AnswerValue, answer AS AnswerText
+                    //TODO draw this out of year loop inefficient to do this every time breaks code below tho
+                    $answersResults = Yii::app()->db->createCommand(
+                        " SELECT `code` AS AnswerValue, answer AS AnswerText
                               FROM {{answers}}
-                              WHERE qid = " . $questionRow['qid'];
-                    $answersResults = Yii::app()->db->createCommand($answersQuery)->query();
+                              WHERE qid = " . $questionRow['qid']
+                    )->query();
+
                     //Read first result
                     $currentAnswer = $answersResults->read();
 
