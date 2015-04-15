@@ -344,7 +344,7 @@ Year to feature:
                     $currentYear = $year['year'];
 
                     // *** Get all possible answers for current question ***
-                    //TODO draw this out of year loop inefficient to do this every time breaks code below tho
+                    //TODO draw this out of year loop inefficient to do this every time
                     $answersResults = Yii::app()->db->createCommand(
                         " SELECT `code` AS AnswerValue, answer AS AnswerText
                               FROM {{answers}}
@@ -424,7 +424,7 @@ Year to feature:
             //Get total survey responses
             $surveyData['totalResponses'] = 0;
             //Just look at how many responses there were to the first question
-            $x = $surveyData['questions'][0]['answerCount'][$featureYear]['0']['0']['A0'] != null ? 0 : 1;
+            $x = !is_null($surveyData['questions'][0]['answerCount'][$featureYear]['0']['0']['A0']) ? 0 : 1;
             foreach ($surveyData['questions'][0]['answerCount'][$featureYear]['0'] as $question) {
                 $surveyData['totalResponses'] += (int)$question['A' . $x];
                 $x++;
@@ -456,28 +456,44 @@ HTML;
         $i = 0;
         foreach ($surveys as $survey) {
             $content .= '<br/><br/>';
-
+            //Survey Title
             $content .= "<h2>" . $survey['title'] . "  <br />Program: " . $survey["programTitle"] . "</h2>";
+
+            //Check if survey uses tokens
             if (!is_null($survey['tokenCount'])) {
+                //Total tokens originally sent out
                 $content .= "Surveys sent out: " . $survey['tokenCount'] . "<br/>";
             } else {
                 $content .= "Open survey.<br/>";
             }
-            $content .= "Responses received: " . $survey['totalResponses'] . "<br/>";
+
+            //Total survey responses in feature year
+            $content .= "Responses received in feature year: " . $survey['totalResponses'] . "<br/>";
+
             foreach ($survey['questions'] as $question) {
                 $content .= "<h4>" . $question['title'] . "</h4><br/>";
+
                 //**Generate Charts**
 
                 //Check for if feature year has data to show
                 if (!is_null($question['answerCount'][$yearToFeature])) {
+                    //Draw Column Chart
                     $content .= $this->generateColumnChart($question['answerCount'][$yearToFeature], $i++);
+                    //Draw Pie Chart
                     $content .= $this->generatePieChart($question['answerCount'][$yearToFeature], $i++);
-                }else{
+                } else {
+                    //No Data for feature year
                     $content .= "<h2>No data for selected feature year.</h2>";
                 }
-                $content .= $this->generateAreaChart($question['answerCount'], $i++, $yearToFeature);
+
+                //Get first year of valid data
+                $firstYearData = reset($question['answerCount']);
+
+                //Always Draw Line Chart
+                $content .= $this->generateAreaChart($question['answerCount'], $i++, $firstYearData['year']);
+
                 //Build up possible answers list
-                $x = $question['answerCount']['0']['A0'] != null ? 0 : 1;
+                $x = !is_null($question['answerCount'][$firstYearData['year']]['0']['0']['A0']) ? 0 : 1;
                 foreach ($question['possibleAnswers'] as $answer) {
                     $content .= '<br/>A' . $x . " : " . $answer;
                     $x++;
@@ -514,7 +530,7 @@ HTML;
         //Push graph header data first
         array_push($graphData, array('Answer', 'Count', array('role' => 'style')));
         //Check if question had no answer option
-        $i = $questionData['0']['0']['A0'] != null ? 0 : 1;
+        $i = !is_null($questionData['0']['0']['A0']) ? 0 : 1;
         foreach ($questionData['0'] as $responseData) {
             array_push($graphData, array('A' . $i, $responseData['A' . $i], '#b87333'));
             $i++;
@@ -561,8 +577,9 @@ HTML;
         //Push graph header data first
         array_push($graphData, array('Answer', 'Count', array('role' => 'style')));
         //Check if question had no answer option
-        $i = $questionData['0']['0']['A0'] != null ? 0 : 1;
+        $i = !is_null($questionData['0']['0']['A0']) ? 0 : 1;
 
+//        print_r($i);
         foreach ($questionData['0'] as $responseData) {
             array_push($graphData, array('A' . $i, $responseData['A' . $i], '#b87333'));
             $i++;
@@ -600,7 +617,7 @@ HTML;
      * @param $number numberOf Chart we are generating
      * @return string The html Markup for the graph
      */
-    private function generateAreaChart($questionData, $number, $yearToFeature)
+    private function generateAreaChart($questionData, $number, $firstYear)
     {
         $content = "";
         $content .= <<<HTML
@@ -612,21 +629,25 @@ HTML;
                         var data = new google.visualization.DataTable();
 HTML;
 
-        //Build the JSON Data for the graph
-        $graphData = array();
 
         $content .= "data.addColumn('string', 'Year');";
-        $finalData = array();
-        $firstYear = true;
 
+        //Build the JSON Data for the graph
+        $graphData = array();
+        $finalData = array();
+
+        $onFirstYear = true;
         foreach ($questionData as $currentYearData) {
-            $i = $questionData[$yearToFeature]['0']['0']['A0'] != null ? 0 : 1;
+
             $currentYear = $currentYearData['year'];
+
+            $i = !is_null($questionData[$currentYear]['0']['0']['A0']) ? 0 : 1;
 
             $graphData[$currentYear] = array();
             array_push($graphData[$currentYear], $currentYear);
+
             foreach ($currentYearData['0'] as $answerValue) {
-                if ($firstYear) {
+                if ($onFirstYear) {
                     $content .= "data.addColumn('number', 'A" . $i . "');";
                 }
                 array_push($graphData[$currentYear], $answerValue['A' . $i]);
@@ -634,7 +655,7 @@ HTML;
             }
 
             array_push($finalData, $graphData[$currentYear]);
-            $firstYear = false;
+            $onFirstYear = false;
         }
         $content .= "data.addRows(";
         $content .= json_encode($finalData);
