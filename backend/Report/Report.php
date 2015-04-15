@@ -288,12 +288,14 @@ Year to feature:
             //Check for if this survey uses tokens
             if (!is_null(Yii::app()->db->schema->getTable("{{tokens_$surveyID}}"))) {
                 //Get total # of tokens created for this survey
-                $surveyData['tokenCount'] = Yii::app()->db->createCommand(
+                $tokensCreated = Yii::app()->db->createCommand(
                     "Select COUNT(*) as tokensCreated
                 FROM {{tokens_$surveyID}}
                 WHERE sent NOT LIKE 'N'
                 AND YEAR(sent) = $featureYear" //Only count tokens that have actually been sent and are in featured year
-                )->query()->read()["tokensCreated"];
+                )->query()->read();
+                $surveyData['tokenCount'] = $tokensCreated["tokensCreated"];
+
             }
 
             // Loop through all questions for current survey
@@ -316,12 +318,13 @@ Year to feature:
                 $questionString = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
 
                 //Figure out if question is optional
-                if (Yii::app()->db->createCommand(
-                        "SELECT COUNT(*) AS 'count'
+                $optionalAnswerCount = Yii::app()->db->createCommand(
+                    "SELECT COUNT(*) AS 'count'
                          FROM {{survey_$surveyID}}
                          WHERE `$questionString` = ''"
-                    )->query()->read()['count'] > 0
-                ) {
+                )->query()->read();
+
+                if ( $optionalAnswerCount['count'] > 0 ) {
                     $questionData['isOptional'] = 'true';
                     array_push($questionData['possibleAnswers'], 'No answer');
                 } else {
