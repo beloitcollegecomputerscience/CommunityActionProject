@@ -324,7 +324,7 @@ Year to feature:
                          WHERE `$questionString` = ''"
                 )->query()->read();
 
-                if ( $optionalAnswerCount['count'] > 0 ) {
+                if ($optionalAnswerCount['count'] > 0) {
                     $questionData['isOptional'] = 'true';
                     array_push($questionData['possibleAnswers'], 'No answer');
                 } else {
@@ -466,9 +466,15 @@ HTML;
             $content .= "Responses received: " . $survey['totalResponses'] . "<br/>";
             foreach ($survey['questions'] as $question) {
                 $content .= "<h4>" . $question['title'] . "</h4><br/>";
-                //Generate Charts
-                $content .= $this->generateColumnChart($question['answerCount'][$yearToFeature], $i++);
-                $content .= $this->generatePieChart($question['answerCount'][$yearToFeature], $i++);
+                //**Generate Charts**
+
+                //Check for if feature year has data to show
+                if (!is_null($question['answerCount'][$yearToFeature])) {
+                    $content .= $this->generateColumnChart($question['answerCount'][$yearToFeature], $i++);
+                    $content .= $this->generatePieChart($question['answerCount'][$yearToFeature], $i++);
+                }else{
+                    $content .= "<h2>No data for selected feature year.</h2>";
+                }
                 $content .= $this->generateAreaChart($question['answerCount'], $i++, $yearToFeature);
                 //Build up possible answers list
                 $x = $question['answerCount']['0']['A0'] != null ? 0 : 1;
