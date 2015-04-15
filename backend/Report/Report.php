@@ -411,6 +411,7 @@ Year to feature:
 
                     //Update question and survey data arrays
                     $questionData['answerCount'][$currentYear] = array();
+                    $questionData['answerCount'][$currentYear]['year'] = $currentYear;
                     array_push($questionData['answerCount'][$currentYear], $answerCount);
                     $firstYear = false;
                 }
@@ -456,13 +457,16 @@ HTML;
             $content .= "<h2>" . $survey['title'] . "  <br />Program: " . $survey["programTitle"] . "</h2>";
             if (!is_null($survey['tokenCount'])) {
                 $content .= "Surveys sent out: " . $survey['tokenCount'] . "<br/>";
+            } else {
+                $content .= "Open survey.<br/>";
             }
             $content .= "Responses received: " . $survey['totalResponses'] . "<br/>";
             foreach ($survey['questions'] as $question) {
                 $content .= "<h4>" . $question['title'] . "</h4><br/>";
                 //Generate Charts
-                $content .= $this->generateColumnChart($question['answerCount'][$yearToFeature], $i);
-                $content .= $this->generatePieChart($question['answerCount'][$yearToFeature], $i + 1);
+                $content .= $this->generateColumnChart($question['answerCount'][$yearToFeature], $i++);
+                $content .= $this->generatePieChart($question['answerCount'][$yearToFeature], $i++);
+                $content .= $this->generateAreaChart($question['answerCount'], $i++, $yearToFeature);
                 //Build up possible answers list
                 $x = $question['answerCount']['0']['A0'] != null ? 0 : 1;
                 foreach ($question['possibleAnswers'] as $answer) {
@@ -582,6 +586,69 @@ HTML;
     }
 
     /**
+     * Generates a google column chart
+     * @param $graphData question data to generate
+     * @param $number numberOf Chart we are generating
+     * @return string The html Markup for the graph
+     */
+    private function generateAreaChart($questionData, $number, $yearToFeature)
+    {
+        $content = "";
+        $content .= <<<HTML
+                    <script type="text/javascript">
+
+                      google.setOnLoadCallback(drawColumnChart);
+
+                      function drawColumnChart() {
+                        var data = new google.visualization.DataTable();
+HTML;
+
+        //Build the JSON Data for the graph
+        $graphData = array();
+
+        $content .= "data.addColumn('string', 'Year');";
+        $finalData = array();
+        $firstYear = true;
+
+        foreach ($questionData as $currentYearData) {
+            $i = $questionData[$yearToFeature]['0']['0']['A0'] != null ? 0 : 1;
+            $currentYear = $currentYearData['year'];
+
+            $graphData[$currentYear] = array();
+            array_push($graphData[$currentYear], $currentYear);
+            foreach ($currentYearData['0'] as $answerValue) {
+                if ($firstYear) {
+                    $content .= "data.addColumn('number', 'A" . $i . "');";
+                }
+                array_push($graphData[$currentYear], $answerValue['A' . $i]);
+                $i++;
+            }
+
+            array_push($finalData, $graphData[$currentYear]);
+            $firstYear = false;
+        }
+        $content .= "data.addRows(";
+        $content .= json_encode($finalData);
+        $content .= <<<HTML
+                );
+
+                        var options = {
+          title: 'Company Performance',
+          hAxis: {title: 'Year',  titleTextStyle: {color: '#333'}},
+          vAxis: {minValue: 0}
+        };
+
+                      var chart = new google.visualization.AreaChart(document.getElementById('dual_y_div $number'));
+                      chart.draw(data, options);
+                    };
+                </script>
+                <div id="dual_y_div $number" style="width: 900px; height: 500px;"></div>
+HTML;
+        return $content;
+    }
+
+
+    /**
      * Checks for if user is authenticated and of type superadmin
      * TODO Do we really want to authenticate as super admin? probably just any user being logged in is enough for us?
      */
@@ -596,6 +663,10 @@ HTML;
 
     }
 
+    /**
+     * @param $surveyID
+     * @return mixed|null
+     */
     private function getSurveyTitle($surveyID)
     {
         //Get surveys title
