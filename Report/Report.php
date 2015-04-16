@@ -629,8 +629,7 @@ HTML;
                         var data = new google.visualization.DataTable();
 HTML;
 
-
-        $content .= "data.addColumn('string', 'Year');";
+        $content .= "data.addColumn('date', 'Year');";
 
         //Build the JSON Data for the graph
         $graphData = array();
@@ -644,7 +643,8 @@ HTML;
             $i = !is_null($questionData[$currentYear]['0']['0']['A0']) ? 0 : 1;
 
             $graphData[$currentYear] = array();
-            array_push($graphData[$currentYear], $currentYear);
+            $jsDateString = $currentYear;
+            array_push($graphData[$currentYear], $jsDateString);
 
             foreach ($currentYearData['0'] as $answerValue) {
                 if ($onFirstYear) {
@@ -653,18 +653,40 @@ HTML;
                 array_push($graphData[$currentYear], $answerValue['A' . $i]);
                 $i++;
             }
-
             array_push($finalData, $graphData[$currentYear]);
             $onFirstYear = false;
         }
         $content .= "data.addRows(";
-        $content .= json_encode($finalData);
+
+        //Replace year strings with javascript date time constructors
+        $value_arr = array();
+        $replace_keys = array();
+        $i = 0;
+        foreach($finalData as $key => &$value){
+            // Store JS Date creation string.
+            array_push($value_arr, 'new Date(' .$value['0'] . ', 0, 0)');
+            // Replace year string with a 'unique' special key.
+            $value['0'] = '%YEAR'.$i.'%';
+            // Later on, we'll look for the value, and replace it.
+            array_push($replace_keys, '"' . $value['0'] . '"');
+            $i++;
+        }
+
+        //Encode array
+        $json = json_encode($finalData);
+
+        //Replace special place holder values with constructor
+        $json = str_replace($replace_keys, $value_arr, $json);
+
+        //Actually add formatted graph data to return string
+        $content .= $json;
+
         $content .= <<<HTML
                 );
 
                         var options = {
           title: 'Company Performance',
-          hAxis: {title: 'Year',  titleTextStyle: {color: '#333'}},
+          hAxis: {title: 'Year',  titleTextStyle: {color: '#333'}, format: 'MMM d, y'},
           vAxis: {minValue: 0}
         };
 
