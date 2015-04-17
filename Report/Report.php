@@ -161,7 +161,7 @@ class Report extends PluginBase
         //Get all programs user wants a report on from form post
         $inputPrograms = $_GET['programs'];
         $featureYear = $_GET['yearToFeature'];
-        $viewFactory = new ViewFactory();
+        $viewFactory = new ReportFactory();
         $content = $viewFactory->buildReportUI($this->getReportData($inputPrograms, $featureYear), $featureYear);
 //        $content = $this->buildReportUI();
         return $content;

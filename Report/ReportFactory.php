@@ -4,16 +4,8 @@
  * Class ViewFactory
  * Used to generate this plugins various views
  */
-class ViewFactory
+class ReportFactory
 {
-    /**
-     *
-     */
-    function __construct()
-    {
-
-    }
-
     /**
      * @param $surveys the data needed to populate the report
      * @return string the html content we want rendered as the actual report
@@ -52,10 +44,13 @@ HTML;
 
                 //Check for if feature year has data to show
                 if (!is_null($question['answerCount'][$yearToFeature])) {
+                    $content .= '<div class="row">';
                     //Draw Column Chart
                     $content .= $this->generateColumnChart($question['answerCount'][$yearToFeature], $i++);
                     //Draw Pie Chart
                     $content .= $this->generatePieChart($question['answerCount'][$yearToFeature], $i++);
+
+                    $content .= '</div>';
                 } else {
                     //No Data for feature year
                     $content .= "<h2>No data for selected feature year.</h2>";
@@ -65,15 +60,16 @@ HTML;
                 $firstYearData = reset($question['answerCount']);
 
                 //Always Draw Line Chart
-                $content .= $this->generateAreaChart($question['answerCount'], $i++, $firstYearData['year']);
+                $content .= '<div class="row">'.$this->generateAreaChart($question['answerCount'], $i++, $firstYearData['year']).'</div>';
 
                 //Build up possible answers list
                 $x = !is_null($question['answerCount'][$firstYearData['year']]['0']['0']['A0']) ? 0 : 1;
+                $content .= '<div style="margin-left: 60px">';
                 foreach ($question['possibleAnswers'] as $answer) {
                     $content .= '<br/>A' . $x . " : " . $answer;
                     $x++;
                 }
-                $content .= "<br /><br/>";
+                $content .= "</div><br /><br/>";
                 $i += 2;
             }
         }
@@ -116,14 +112,15 @@ HTML;
                         );
 
                         var options = {
-                          width: 900
+                          width: 450,
+                          height: 400
                         };
 
                       var chart = new google.visualization.PieChart(document.getElementById('dual_y_div $number'));
                       chart.draw(data, options);
                     };
                 </script>
-                <div id="dual_y_div $number" style="width: 900px; height: 500px;"></div>
+                <div id="dual_y_div $number" class="pull-left"></div>
 HTML;
         return $content;
     }
@@ -166,7 +163,8 @@ HTML;
                         );
 
                         var options = {
-                          width: 900,
+                          width: 450,
+                          height: 400,
                           series: {
                             0: { axis: 'count' }, // Bind series 0 to an axis named 'count'.
                           },
@@ -181,7 +179,7 @@ HTML;
                       chart.draw(data, options);
                     };
                 </script>
-                <div id="dual_y_div $number" style="height: 400px;"></div>
+                <div id="dual_y_div $number" class="pull-right"></div>
 HTML;
         return $content;
     }
@@ -260,7 +258,8 @@ HTML;
                 );
 
                         var options = {
-          title: 'Company Performance',
+                            height: 400,
+                            width: 1000,
           hAxis: {title: 'Year',  titleTextStyle: {color: '#333'}, format: 'MMM y'},
           vAxis: {minValue: 0}
         };
@@ -269,7 +268,7 @@ HTML;
                       chart.draw(data, options);
                     };
                 </script>
-                <div id="dual_y_div $number" style="width: 1150px; height: 600px;"></div>
+                <div id="dual_y_div $number"></div>
 HTML;
         return $content;
     }
