@@ -59,8 +59,7 @@ class Report extends PluginBase
             $event = $this->event;
             $menu = $event->get('menu', array());
             $menu['items']['left'][] = array(
-                //TODO This breaks if you click the link again from the manage program page
-                'href' => "plugins/direct?plugin=Report&function=managePrograms", //TODO Grab URL and make dynamic here
+                'href' => "/index.php/plugins/direct?plugin=Report&function=managePrograms",
                 'alt' => gT('CA Report'),
                 'image' => 'chart_bar.png',
             );
