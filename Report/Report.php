@@ -167,7 +167,7 @@ class Report extends PluginBase
     }
 
     /**
-     * Defines the content on the report page TODO Encapsulate this?
+     * Builds the content on the Manage Program page
      **/
     function managePrograms()
     {
@@ -186,21 +186,46 @@ class Report extends PluginBase
             $this->pluginManager->getAPI()->setFlash('The program: \'' . $programToAdd . '\' already exists.');
         }
 
-        //Build up list of all programs
+        //  ** Build up add a program form and list of existing programs
         $list = "";
         foreach ($existingPrograms as $program) {
             if ($program != $this->defaultProgram) {
-                $list .= $program . "<br/>";
+                $list .= $program
+                    . ' <a href="/index.php/plugins/direct?plugin=Report&function=editProgram&programName='
+                    . $program
+                    . '">Edit</a><br/>';
             }
         }
 
-        // Build up UI representing the programs and their associated surveys
+        $form = <<<HTML
+        <h5>Add a Program:</h5>
+        <form name="addProgram" method="GET" action="direct">
+            <!--Add hidden form fields to add params to request and capture inputted program name-->
+            <input type="text" name="plugin" value="Report" style="display: none">
+            <input type="text" name="function" value="managePrograms" style="display: none">
+
+            <input type="text" name="program">
+            <input type="submit" value="+">
+        </form>
+HTML;
+
+
+        $content = '<div class="container well"style="margin-bottom: 20px; margin-top: 20px;">'
+            . $form
+            . '<h5>Programs:</h5>'
+            . $list
+            . '</div>';
+
+        // ** Generate Report Form
+
+        //Build up UI representing the programs and their associated surveys
         $checkboxes = "";
         $currentProgram = "";
         $x = 0;
         $programEnrollementResults = Yii::app()->db->createCommand("SELECT *
             FROM {{community_action_program_enrollment}}
             ORDER BY programName")->query();
+        //Loop through returned results showing surveys that are associated with a program
         foreach ($programEnrollementResults->readAll() as $programToAdd) {
             if ($programToAdd != $this->defaultProgram) {
                 if ($programToAdd["programName"] != $currentProgram) {
@@ -227,38 +252,76 @@ class Report extends PluginBase
                 }
             }
         }
-        // TODO do we want the ability to delete programs??
-        // Add hidden form fields to add params to get request and capture inputted program name
-        $form = <<<HTML
-<h5>Add a Program:</h5>
-<form name="addProgram" method="GET" action="direct">
-<input type="text" name="plugin" value="Report" style="display: none">
-<input type="text" name="function" value="managePrograms" style="display: none">
-<input type="text" name="program">
-<input type="submit" value="+">
-</form>
-HTML;
-
-        //$content is what is rendered to page
-        $content = '<div class="container well"style="margin-bottom: 20px">' . $form . '<h5>Programs:</h5>' . $list . '</div>';
-
-        //Generate Report Form
-        $content .= '<div class="container well" style="margin-bottom: 20px"><h4>Generate Report</h4>';
+        $content .= '<div class="container well" style="margin-bottom: 20px">
+                     <h4>Generate Report</h4>';
 
         $content .= '<form name="generateReport" method="GET" action="direct">
-<input type="text" name="plugin" value="Report" style="display: none">
-<input type="text" name="function" value="generateReport" style="display: none">
-Year to feature:
-<select name="yearToFeature">
-    <option selected>2015</option>
-</select>
-' . $checkboxes . '
-<input type="submit" value="Generate Report">
-</form></div>';
+                        <input type="text" name="plugin" value="Report" style="display: none">
+                        <input type="text" name="function" value="generateReport" style="display: none">
+                        Year to feature:
+                        <select name="yearToFeature">
+                            <option selected>2015</option>
+                        </select>
+                        ' . $checkboxes . '
+                        <input type="submit" value="Generate Report">
+                      </form>
+                      </div>';
 
         return $content;
     }
 
+    /**
+     * Builds the content on the Edit Program page
+     *
+     * @return string the edit program page html
+     */
+    private function editProgram()
+    {
+        $programName = $_GET['programName'];
+
+        $content = '<div class="container"><br/><h1>'
+            . $programName
+            . '</h1>
+            <br/>';
+
+        //Description
+        $content .= '<h4>Description:</h4>
+        <div class="well" style="padding-bottom: 10px">
+        We will eventually pull all of this from the DB. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</div></br>';
+
+        //Delete Button
+        $content .= '<a class="btn-large btn-danger"style="margin: 20px;text-decoration: none;"
+        href="/index.php/plugins/direct?plugin=Report&function=deleteProgram&programName='
+            . $programName
+            . '">Delete Program</a>
+            *Note this only deletes the program and its data <strong>not</strong> any survey data.
+            <br/>
+            <br/>
+            <br/>';
+
+        $content .= "</div>";
+        return $content;
+    }
+
+    /**
+     * Deletes the requested program and its data. It also de-associates any surveys that were tied to the deleted
+     * program.
+     */
+    private function deleteProgram()
+    {
+        $programName = $_GET['programName'];
+
+        //Delete program record
+        $programModel = $this->api->newModel($this, 'programs');
+        $programModel->deleteAll('programName=:PN', array(':PN' => $programName));
+
+        //Delete survey associations with this program
+        $enrollmentModel = $this->api->newModel($this, 'program_enrollment');
+        $enrollmentModel->deleteAll('programName=:PN', array(':PN' => $programName));
+
+        //Redirect to manage programs page
+        Yii::app()->getController()->redirect(array('/plugins/direct?plugin=Report&function=managePrograms'));
+    }
 
     /**---Helper Functions---**/
 
