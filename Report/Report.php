@@ -232,14 +232,27 @@ class Report extends PluginBase
         $content .= '<div class="container well" style="margin-bottom: 20px">
                      <h4>Generate Report</h4>';
 
+
+
+        // Generate feature year drop down menu
+        $yearDropDown = '<select name="yearToFeature">';
+        $thisYear = date('Y');
+        $startYear = ($thisYear - 20); //Just go back 20 years? this is probably enough for now
+        foreach (range($thisYear, $startYear) as $year) {
+            if ($year == $thisYear) {
+                $yearDropDown .=  "<option selected>$year</option>";
+            }else{
+                $yearDropDown .=  "<option>$year</option>";
+            }
+        }
+        $yearDropDown .= "</select>";
+
         $content .= '<form name="generateReport" method="GET" action="direct">
                         <input type="text" name="plugin" value="Report" style="display: none">
                         <input type="text" name="function" value="generateReport" style="display: none">
                         Year to feature:
-                        <select name="yearToFeature">
-                            <option selected>2015</option>
-                        </select>
-                        ' . $checkboxes . '
+
+                        ' . $yearDropDown . $checkboxes . '
                         <input type="submit" value="Generate Report">
                       </form>
                       </div>';
