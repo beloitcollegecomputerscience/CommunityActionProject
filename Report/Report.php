@@ -31,9 +31,10 @@ class Report extends PluginBase
         if (!$this->api->tableExists($this, 'programs')) {
             $this->api->createTable($this, 'programs', array(
                 'id' => 'pk',
-                'programName' => 'string'));
+                'programName' => 'string',
+                'description' => 'string'));
             //Save Default Program
-            $this->saveProgram($this->defaultProgram);
+            $this->saveProgram($this->defaultProgram, "This is the default program");
         }
 
         //Create Program Enrollment
@@ -132,8 +133,6 @@ class Report extends PluginBase
         }
     }
 
-    /**---Direct Requests--**/
-
     /**
      * Handles and parses out function calls from Url's
      **/
@@ -166,54 +165,32 @@ class Report extends PluginBase
         return $content;
     }
 
+
+    /** Program CRUD Functionality nad UI */
+
     /**
      * Builds the content on the Manage Program page
      **/
     function managePrograms()
     {
-        // Get program to add from form post
-        $programToAdd = $_GET['program'];
         //Get all programs from table to check against for duplicates
         $existingPrograms = $this->getPrograms();
-        // If program to add is not null or already added save to programs table
-        $programExists = in_array($programToAdd, $existingPrograms);
-        if ($programToAdd != null && !$programExists) {
-            $this->saveProgram($programToAdd);
-            // Get all programs again to refresh list after adding a program
-            $existingPrograms = $this->getPrograms();
-        } else if ($programExists) {
-            // Let user know cant add duplicate programs
-            $this->pluginManager->getAPI()->setFlash('The program: \'' . $programToAdd . '\' already exists.');
-        }
 
-        //  ** Build up add a program form and list of existing programs
+        //  ** Build up add a program button and list of existing programs
         $list = "";
         foreach ($existingPrograms as $program) {
             if ($program != $this->defaultProgram) {
                 $list .= $program
-                    . ' <a href="/index.php/plugins/direct?plugin=Report&function=editProgram&programName='
+                    . ' <a href="/index.php/plugins/direct?plugin=Report&function=viewProgramDetails&programName='
                     . $program
-                    . '">Edit</a><br/>';
+                    . '">Details</a><br/>';
             }
         }
 
-        $form = <<<HTML
-        <h5>Add a Program:</h5>
-        <form name="addProgram" method="GET" action="direct">
-            <!--Add hidden form fields to add params to request and capture inputted program name-->
-            <input type="text" name="plugin" value="Report" style="display: none">
-            <input type="text" name="function" value="managePrograms" style="display: none">
-
-            <input type="text" name="program">
-            <input type="submit" value="+">
-        </form>
-HTML;
-
-
         $content = '<div class="container well"style="margin-bottom: 20px; margin-top: 20px;">'
-            . $form
             . '<h5>Programs:</h5>'
             . $list
+            . '<br/><a href="/index.php/plugins/direct?plugin=Report&function=addProgramForm" class="btn btn-lg btn-success">Add a Program</a>'
             . '</div>';
 
         // ** Generate Report Form
@@ -271,13 +248,72 @@ HTML;
     }
 
     /**
-     * Builds the content on the Edit Program page
-     *
-     * @return string the edit program page html
+     * The UI with form for adding a program
+     * @return string the
      */
-    private function editProgram()
+    private function addProgramForm()
+    {
+        $content = '"<div class="container">';
+        $form = <<<HTML
+        <h5>Add a new Program</h5>
+        <br/>
+        <form name="addProgram" method="GET" action="direct">
+            <!--Add hidden form fields to add params to request and capture inputted program name-->
+            <input type="text" name="plugin" value="Report" style="display: none">
+            <input type="text" name="function" value="addProgram" style="display: none">
+            <label><strong>Name</strong></label><br/>
+            <input type="text" name="programName" required>
+            <br/>
+            <br/>
+            <label><strong>Description</strong></label><br/>
+            <textarea COLS=50 ROWS=5 name="programDescription" required></textarea>
+            <br/>
+            <input type="submit" value="Save Program" style="margin-top: 20px;margin-bottom: 20px;">
+
+        </form>
+HTML;
+        $content .= $form . "</div>";
+        return $content;
+    }
+
+    /**
+     * Actually adds new program and then reroutes to manage program view
+     */
+    private function addProgram()
+    {
+        // Get program to add details from form post
+        $programName = $_GET['programName'];
+        $programDescription = $_GET['programDescription'];
+
+        //Get all programs from table to check against for duplicates
+        $existingPrograms = $this->getPrograms();
+        // If program to add is not null or already added save to programs table
+        $programExists = in_array($programName, $existingPrograms);
+        if ($programName != null && !$programExists) {
+            $this->saveProgram($programName, $programDescription);
+        } else if ($programExists) {
+            // Let user know cant add duplicate programs
+            $this->pluginManager->getAPI()->setFlash('The program: \'' . $programName . '\' already exists.');
+        }
+        //Redirect to manage programs page
+        Yii::app()->getController()->redirect(array('/plugins/direct?plugin=Report&function=managePrograms'));
+    }
+
+    /**
+     * Builds the content on the Program Details page
+     *
+     * @return string the program details page html
+     */
+    private function viewProgramDetails()
     {
         $programName = $_GET['programName'];
+
+        //Get program data
+        $program = Yii::app()->db->createCommand(
+            "SELECT * FROM {{community_action_programs}}
+            WHERE programName = '$programName'")->query()->read();
+
+        // ** Build the view **
 
         $content = '<div class="container"><br/><h1>'
             . $programName
@@ -287,20 +323,88 @@ HTML;
         //Description
         $content .= '<h4>Description:</h4>
         <div class="well" style="padding-bottom: 10px">
-        We will eventually pull all of this from the DB. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</div></br>';
+        ' . $program["description"] . '</div></br>';
 
         //Delete Button
-        $content .= '<a class="btn-large btn-danger"style="margin: 20px;text-decoration: none;"
-        href="/index.php/plugins/direct?plugin=Report&function=deleteProgram&programName='
+        $content .= '<a class="btn-large btn-warning"style="margin: 20px;text-decoration: none;"
+        href="/index.php/plugins/direct?plugin=Report&function=editProgram&programName='
+            . $programName
+            . '">Edit Program</a>
+            <a class="btn-large btn-danger"style="margin: 20px;text-decoration: none;"
+            href="/index.php/plugins/direct?plugin=Report&function=deleteProgram&programName='
             . $programName
             . '">Delete Program</a>
             *Note this only deletes the program and its data <strong>not</strong> any survey data.
-            <br/>
             <br/>
             <br/>';
 
         $content .= "</div>";
         return $content;
+    }
+
+    /**
+     * Builds the content on the Edit Program page
+     *
+     * @return string the edit program page html
+     */
+    private function editProgram()
+    {
+        $programName = $_GET['programName'];
+
+        $content = '"<div class="container">';
+        $content .= "<h2>$programName</h2>";
+
+        $form = <<<HTML
+        <form name="addProgram" method="GET" action="direct">
+            <!--Add hidden form fields to add params to request and capture inputted program name-->
+            <input type="text" name="plugin" value="Report" style="display: none">
+            <input type="text" name="function" value="updateProgram" style="display: none">
+HTML;
+        $form .= '<input type="text" name="programName" value="' . $programName . '"style="display: none;" >';
+        $form .= <<<HTML
+            <label><strong>Description</strong></label><br/>
+            <textarea COLS=50 ROWS=5 name="programDescription" required>
+HTML;
+
+        //Get program data
+        $program = Yii::app()->db->createCommand(
+            "SELECT * FROM {{community_action_programs}}
+            WHERE programName = '$programName'")->query()->read();
+
+        $form .= $program["description"];
+        $form .= '</textarea>
+            <br/>
+            <input type="submit" value="Update Program" style="margin-top: 20px;margin-bottom: 20px;">
+
+        </form>';
+
+        $content .= $form . "</div>";
+        return $content;
+    }
+
+
+    /**
+     * Updates the actual program record and then redirects to the manage program page
+     */
+    private function updateProgram()
+    {
+        $programName = $_GET['programName'];
+        $newProgramDescription = $_GET['programDescription'];
+
+        //Get program data need primary key to update name is not enough
+        $program = Yii::app()->db->createCommand(
+            "SELECT * FROM {{community_action_programs}}
+            WHERE programName = '$programName'")->query()->read();
+
+        //Update program record
+        $pid = $program['id'];
+        Yii::app()->db->createCommand(
+            "UPDATE {{community_action_programs}}
+            SET description= '$newProgramDescription'
+            WHERE id = $pid")->query();
+
+        //Redirect to manage programs page
+        Yii::app()->getController()->redirect(array('/plugins/direct?plugin=Report&function=managePrograms'));
     }
 
     /**
@@ -535,10 +639,9 @@ HTML;
      * @param null $sid
      * @return array
      */
-    private function getPrograms($sid = null)
+    private function getPrograms()
     {
-        $programModel = $this->api->newModel($this, 'programs');
-        $results = $sid == null ? $programModel->findAll() : $programModel->findAll('survey_id=:sid', array(':sid' => $sid));
+        $results = $this->api->newModel($this, 'programs')->findAll();
         return $results == null ? null : CHtml::listData($results, "id", "programName");
     }
 
@@ -546,10 +649,11 @@ HTML;
      * Saves a new program mode
      * @param $programName
      */
-    private function saveProgram($programName)
+    private function saveProgram($programName, $description)
     {
         $programModel = $this->api->newModel($this, 'programs');
         $programModel->programName = $programName;
+        $programModel->description = $description;
         $programModel->save();
     }
 }
