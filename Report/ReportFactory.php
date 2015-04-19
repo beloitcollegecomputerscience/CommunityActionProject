@@ -20,11 +20,12 @@ class ReportFactory
 </script>
 HTML;
         $content .= '<div class="container">';
+        $content .= "<h1>Community Action Annual Report " . $yearToFeature . "</h1>";
         $i = 0;
         foreach ($surveys as $survey) {
-            $content .= '<br/><br/>';
+            $content .= '<br/>';
             //Survey Title
-            $content .= "<h2>" . $survey['title'] . "  <br />Program: " . $survey["programTitle"] . "</h2>";
+            $content .= "<h3>Program: " . $survey["programTitle"] . "<br />" . $survey['title'] . "</h3>";
 
             //Check if survey uses tokens
             if (!is_null($survey['tokenCount'])) {
@@ -60,7 +61,7 @@ HTML;
                 $firstYearData = reset($question['answerCount']);
 
                 //Always Draw Line Chart
-                $content .= '<div class="row">'.$this->generateAreaChart($question['answerCount'], $i++, $firstYearData['year']).'</div>';
+                $content .= '<div class="row">' . $this->generateAreaChart($question['answerCount'], $i++, $firstYearData['year']) . '</div>';
 
                 //Build up possible answers list
                 $x = !is_null($question['answerCount'][$firstYearData['year']]['0']['0']['A0']) ? 0 : 1;
@@ -264,7 +265,7 @@ HTML;
           vAxis: {minValue: 0}
         };
 
-                      var chart = new google.visualization.AreaChart(document.getElementById('dual_y_div $number'));
+                      var chart = new google.visualization.LineChart(document.getElementById('dual_y_div $number'));
                       chart.draw(data, options);
                     };
                 </script>
