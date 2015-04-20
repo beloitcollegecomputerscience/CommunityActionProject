@@ -122,11 +122,11 @@ HTML;
                           height: 400
                         };
 
-                      var chart = new google.visualization.PieChart(document.getElementById('dual_y_div $number'));
+                      var chart = new google.visualization.PieChart(document.getElementById('dual_y_div_$number'));
                       chart.draw(data, options);
                     };
                 </script>
-                <div id="dual_y_div $number" class="pull-left"></div>
+                <div class="dual_y_div" id="dual_y_div_$number" class="pull-left"></div>
 HTML;
         return $content;
     }
@@ -181,11 +181,11 @@ HTML;
                           }
                         };
 
-                      var chart = new google.charts.Bar(document.getElementById('dual_y_div $number'));
+                      var chart = new google.charts.Bar(document.getElementById('dual_y_div_$number'));
                       chart.draw(data, options);
                     };
                 </script>
-                <div id="dual_y_div $number" class="pull-right"></div>
+                <div class="dual_y_div" id="dual_y_div_$number" class="pull-right"></div>
 HTML;
         return $content;
     }
@@ -270,11 +270,11 @@ HTML;
           vAxis: {minValue: 0}
         };
 
-                      var chart = new google.visualization.LineChart(document.getElementById('dual_y_div $number'));
+                      var chart = new google.visualization.LineChart(document.getElementById('dual_y_div_$number'));
                       chart.draw(data, options);
                     };
                 </script>
-                <div id="dual_y_div $number"></div>
+                <div class="dual_y_div" id="dual_y_div_$number"></div>
 HTML;
         return $content;
     }
