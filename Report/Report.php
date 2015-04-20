@@ -220,8 +220,14 @@ class Report extends PluginBase
 
                 //Get program associated with this survey
                 $programEnrollment = $this->api->newModel($this, 'program_enrollment');
-                $titleResults = $programEnrollment->find('survey_id=:sid', array(':sid' => $surveyID));
-                $surveyData['programTitle'] = $titleResults["programName"];
+                $surveyProgramData = $programEnrollment->find('survey_id=:sid', array(':sid' => $surveyID));
+                $surveyData['programTitle'] = $surveyProgramData["programName"];
+                $programTitle = $surveyData['programTitle'];
+                //Get program data
+                $program = Yii::app()->db->createCommand(
+                    "SELECT * FROM {{community_action_programs}}
+                     WHERE programName = '$programTitle'")->query()->read();
+                $surveyData['programDescription'] = $program["description"];
 
                 //Get surveys title
                 $surveyData['title'] = $this->getSurveyTitle($surveyID);
@@ -232,15 +238,14 @@ class Report extends PluginBase
                 $questionData['possibleAnswers'] = array();
 
                 //Determine this questions column name in DB
-                $questionString = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
+                $questionDBColumnName = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
 
                 //Figure out if question is optional
                 $optionalAnswerCount = Yii::app()->db->createCommand(
                     "SELECT COUNT(*) AS 'count'
                          FROM {{survey_$surveyID}}
-                         WHERE `$questionString` = ''"
+                         WHERE `$questionDBColumnName` = ''"
                 )->query()->read();
-
                 if ($optionalAnswerCount['count'] > 0) {
                     $questionData['isOptional'] = 'true';
                     array_push($questionData['possibleAnswers'], 'No answer');
@@ -272,11 +277,11 @@ class Report extends PluginBase
                     $currentAnswer = $answersResults->read();
 
                     // *** Get Survey Responses for this year ***
-                    $responsesResults = Yii::app()->db->createCommand("SELECT  `" . $questionString
+                    $responsesResults = Yii::app()->db->createCommand("SELECT  `" . $questionDBColumnName
                         . "`AS AnswerValue, COUNT(*) AS `Count` FROM {{survey_$surveyID}}
                         WHERE YEAR(submitdate) = $currentYear
                         GROUP BY `"
-                        . $questionString . "`")->query();
+                        . $questionDBColumnName . "`")->query();
 
                     //Holds current questions response data by year in a graph-able format
                     $answerCount = array();

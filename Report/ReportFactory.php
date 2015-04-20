@@ -24,8 +24,13 @@ HTML;
         $i = 0;
         foreach ($surveys as $survey) {
             $content .= '<br/>';
+            //Program Title
+            $content .= "<h2>Program: " . $survey["programTitle"] . "</h2>";
+            //Program Description
+            $content .= '<p>'.$survey['programDescription'].'</p>';
+
             //Survey Title
-            $content .= "<h3>Program: " . $survey["programTitle"] . "<br />" . $survey['title'] . "</h3>";
+            $content .= "<br /><h3>" . $survey['title'] . "</h3>";
 
             //Check if survey uses tokens
             if (!is_null($survey['tokenCount'])) {
