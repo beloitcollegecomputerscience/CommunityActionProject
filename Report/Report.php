@@ -13,10 +13,6 @@ class Report extends PluginBase
     static protected $description = 'Community Action reporting tool';
     static protected $name = "Community_Action";
 
-    //Default program
-    protected $defaultProgramName = "Select a Program...";
-
-
     /***************** LimeSurvey Plugin Functions ********************/
 
     public function __construct(PluginManager $manager, $id)
@@ -44,8 +40,6 @@ class Report extends PluginBase
                 'id' => 'pk',
                 'programName' => 'string',
                 'description' => 'string'));
-            //Save Default Program
-            $this->saveProgram($this->defaultProgramName, "This is the default program");
         }
 
         //Create Program Enrollment
@@ -90,21 +84,27 @@ class Report extends PluginBase
         $event = $this->getEvent();
         $survey_id = $event->get('survey');
 
-        // Grab all entry's from program table to populate drop down with
-        $existingPrograms = $this->getPrograms();
-
-        // This creates the array of options that we will feed in to the event below.
-        $options = array();
-        foreach ($existingPrograms as $program) {
-            $options[$program] = $program;
-        }
-
         //Check for if this survey is already associated with a program if not set to default value
         $programEnrollment = $this->api->newModel($this, 'program_enrollment');
         $results = $programEnrollment->findAll('survey_id=:sid', array(':sid' => $survey_id));
         $program = CHtml::listData($results, "survey_id", "programName");
+
+        // Creates the array of options that we will feed in to the event below.
+        $options = array();
         //If survey is associated set drop down menus current value to that program
-        $current = $results == null ? $this->defaultProgramName : $program;
+        if($results != null){
+            $current = $program;
+        }else{
+            //Else populate with default value
+            $current = "Select a Program...";
+            $options["Select a Program..."] = "Select a Program...";
+        }
+
+        // Grab all entry's from program table to populate drop down with
+        $existingPrograms = $this->getPrograms();
+        foreach ($existingPrograms as $program) {
+            $options[$program] = $program;
+        }
 
         //Custom settings for survey
         $event->set("surveysettings.{$this->id}", array(
@@ -129,14 +129,17 @@ class Report extends PluginBase
         foreach ($event->get('settings') as $name => $value) {
             //Catch our custom setting and save in program_enrollment table instead of generic plugin settings table
             if ($name = "program_enrollment") {
-                $enrollmentModel = $this->api->newModel($this, 'program_enrollment');
-                $surveyID = $event->get('survey');
-                //Delete old record
-                $enrollmentModel->deleteAll('survey_id=:sid', array(':sid' => $surveyID));
-                //Save new one
-                $enrollmentModel->survey_id = $surveyID;
-                $enrollmentModel->programName = $value;
-                $enrollmentModel->save();
+                //Make sure were not saving default program
+                if($value != "Select a Program...") {
+                    $enrollmentModel = $this->api->newModel($this, 'program_enrollment');
+                    $surveyID = $event->get('survey');
+                    //Delete old record
+                    $enrollmentModel->deleteAll('survey_id=:sid', array(':sid' => $surveyID));
+                    //Save new one
+                    $enrollmentModel->survey_id = $surveyID;
+                    $enrollmentModel->programName = $value;
+                    $enrollmentModel->save();
+                }
             } else {
                 //Everything else let save where lime survey wants it to be
                 $this->set($name, $value, 'Survey', $event->get('survey'));
@@ -386,12 +389,10 @@ class Report extends PluginBase
         //  ** Build up add a program button and list of existing programs
         $list = "";
         foreach ($existingPrograms as $program) {
-            if ($program != $this->defaultProgramName) {
-                $list .= $program
-                    . ' <a href="/index.php/plugins/direct?plugin=Report&function=viewProgramDetails&programName='
-                    . $program
-                    . '">Details</a><br/>';
-            }
+            $list .= $program
+                . ' <a href="/index.php/plugins/direct?plugin=Report&function=viewProgramDetails&programName='
+                . $program
+                . '">Details</a><br/>';
         }
 
         $content = '<div class="container well"style="margin-bottom: 20px; margin-top: 20px;">'
@@ -411,29 +412,27 @@ class Report extends PluginBase
             ORDER BY programName")->query();
         //Loop through returned results showing surveys that are associated with a program
         foreach ($programEnrollementResults->readAll() as $programToAdd) {
-            if ($programToAdd != $this->defaultProgramName) {
-                if ($programToAdd["programName"] != $currentProgram) {
-                    $checkboxes .= '<div class="checkbox">
+            if ($programToAdd["programName"] != $currentProgram) {
+                $checkboxes .= '<div class="checkbox">
                                  <label><strong>
                                 ' . $programToAdd["programName"] . '
                                 </strong>
                                 </label>
                                 </div>';
-                    $checkboxes .= '<div class="checkbox" style="text-indent: 1em;">
+                $checkboxes .= '<div class="checkbox" style="text-indent: 1em;">
                                  <label>
                                 <input type="checkbox" value="' . $programToAdd["survey_id"] . '" name="programs[' . $x++ . ']">
                                 ' . $this->getSurveyTitle($programToAdd["survey_id"]) . '
                                 </label>
                                 </div>';
-                    $currentProgram = $programToAdd["programName"];
-                } else {
-                    $checkboxes .= '<div class="checkbox" style="text-indent: 1em;">
+                $currentProgram = $programToAdd["programName"];
+            } else {
+                $checkboxes .= '<div class="checkbox" style="text-indent: 1em;">
                                  <label>
                                 <input type="checkbox" value="' . $programToAdd["survey_id"] . '" name="programs[' . $x++ . ']">
                                 ' . $this->getSurveyTitle($programToAdd["survey_id"]) . '
                                 </label>
                                 </div>';
-                }
             }
         }
         $content .= '<div class="container well" style="margin-bottom: 20px">
