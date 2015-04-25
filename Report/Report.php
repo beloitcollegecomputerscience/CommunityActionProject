@@ -174,10 +174,10 @@ class Report extends PluginBase
     function generateReport()
     {
         //Get all programs user wants a report on from form post
-        $inputPrograms = $_GET['programs'];
+        $surveysToReportOn = $_GET['surveys'];
         $featureYear = $_GET['yearToFeature'];
         $viewFactory = new ReportFactory();
-        $content = $viewFactory->buildReportUI($this->getReportData($inputPrograms, $featureYear), $featureYear);
+        $content = $viewFactory->buildReportUI($this->getReportData($surveysToReportOn, $featureYear), $featureYear);
         return $content;
     }
 
@@ -421,7 +421,7 @@ class Report extends PluginBase
                                 </div>';
                 $checkboxes .= '<div class="checkbox" style="text-indent: 1em;">
                                  <label>
-                                <input type="checkbox" value="' . $programToAdd["survey_id"] . '" name="programs[' . $x++ . ']">
+                                <input type="checkbox" value="' . $programToAdd["survey_id"] . '" name="surveys[' . $x++ . ']">
                                 ' . $this->getSurveyTitle($programToAdd["survey_id"]) . '
                                 </label>
                                 </div>';
@@ -429,7 +429,7 @@ class Report extends PluginBase
             } else {
                 $checkboxes .= '<div class="checkbox" style="text-indent: 1em;">
                                  <label>
-                                <input type="checkbox" value="' . $programToAdd["survey_id"] . '" name="programs[' . $x++ . ']">
+                                <input type="checkbox" value="' . $programToAdd["survey_id"] . '" name="surveys[' . $x++ . ']">
                                 ' . $this->getSurveyTitle($programToAdd["survey_id"]) . '
                                 </label>
                                 </div>';
