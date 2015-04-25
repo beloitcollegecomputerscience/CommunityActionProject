@@ -126,7 +126,7 @@ HTML;
                       chart.draw(data, options);
                     };
                 </script>
-                <div class="dual_y_div" id="dual_y_div_$number" class="pull-left"></div>
+                <div class="dual_y_div pull-left" id="dual_y_div_$number"></div>
 HTML;
         return $content;
     }
@@ -185,7 +185,7 @@ HTML;
                       chart.draw(data, options);
                     };
                 </script>
-                <div class="dual_y_div" id="dual_y_div_$number" class="pull-right"></div>
+                <div class="dual_y_div pull-right" id="dual_y_div_$number"></div>
 HTML;
         return $content;
     }
