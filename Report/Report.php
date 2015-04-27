@@ -1,13 +1,19 @@
 <?php
 
+/**
+ * Community Action Reporting tool built to help with mandated federal reporting
+ *
+ * Built by Beloit College Database Capstone Class 2014-2015
+ *
+ */
 class Report extends PluginBase
 {
-
+    //Plugin Settings
     protected $storage = 'DbStorage';
     static protected $description = 'Community Action reporting tool';
     static protected $name = "Community_Action";
 
-    protected $defaultProgram = "Select a Program...";
+    /***************** LimeSurvey Plugin Functions ********************/
 
     public function __construct(PluginManager $manager, $id)
     {
@@ -21,6 +27,7 @@ class Report extends PluginBase
         $this->subscribe('newSurveySettings');
     }
 
+
     /**
      * Runs when plugin is activated creates all the necessary tables to support
      * Community Action Reporting Plugin
@@ -31,9 +38,8 @@ class Report extends PluginBase
         if (!$this->api->tableExists($this, 'programs')) {
             $this->api->createTable($this, 'programs', array(
                 'id' => 'pk',
-                'programName' => 'string'));
-            //Save Default Program
-            $this->saveProgram($this->defaultProgram);
+                'programName' => 'string',
+                'description' => 'string'));
         }
 
         //Create Program Enrollment
@@ -59,8 +65,8 @@ class Report extends PluginBase
             $event = $this->event;
             $menu = $event->get('menu', array());
             $menu['items']['left'][] = array(
-                //TODO This breaks if you click the link again from the manage program page
-                'href' => "plugins/direct?plugin=Report&function=managePrograms", //TODO Grab URL and make dynamic here
+                //TODO Make this URL Dynamic
+                'href' => "/index.php/plugins/direct?plugin=Report&function=managePrograms",
                 'alt' => gT('CA Report'),
                 'image' => 'chart_bar.png',
             );
@@ -79,21 +85,27 @@ class Report extends PluginBase
         $event = $this->getEvent();
         $survey_id = $event->get('survey');
 
-        // Grab all entry's from program table to populate drop down with
-        $existingPrograms = $this->getPrograms();
-
-        // This creates the array of options that we will feed in to the event below.
-        $options = array();
-        foreach ($existingPrograms as $program) {
-            $options[$program] = $program;
-        }
-
         //Check for if this survey is already associated with a program if not set to default value
         $programEnrollment = $this->api->newModel($this, 'program_enrollment');
         $results = $programEnrollment->findAll('survey_id=:sid', array(':sid' => $survey_id));
         $program = CHtml::listData($results, "survey_id", "programName");
+
+        // Creates the array of options that we will feed in to the event below.
+        $options = array();
         //If survey is associated set drop down menus current value to that program
-        $current = $results == null ? $this->defaultProgram : $program;
+        if($results != null){
+            $current = $program;
+        }else{
+            //Else populate with default value
+            $current = "Select a Program...";
+            $options["Select a Program..."] = "Select a Program...";
+        }
+
+        // Grab all entry's from program table to populate drop down with
+        $existingPrograms = $this->getPrograms();
+        foreach ($existingPrograms as $program) {
+            $options[$program] = $program;
+        }
 
         //Custom settings for survey
         $event->set("surveysettings.{$this->id}", array(
@@ -118,22 +130,23 @@ class Report extends PluginBase
         foreach ($event->get('settings') as $name => $value) {
             //Catch our custom setting and save in program_enrollment table instead of generic plugin settings table
             if ($name = "program_enrollment") {
-                $enrollmentModel = $this->api->newModel($this, 'program_enrollment');
-                $surveyID = $event->get('survey');
-                //Delete old record
-                $enrollmentModel->deleteAll('survey_id=:sid', array(':sid' => $surveyID));
-                //Save new one
-                $enrollmentModel->survey_id = $surveyID;
-                $enrollmentModel->programName = $value;
-                $enrollmentModel->save();
+                //Make sure were not saving default program
+                if($value != "Select a Program...") {
+                    $enrollmentModel = $this->api->newModel($this, 'program_enrollment');
+                    $surveyID = $event->get('survey');
+                    //Delete old record
+                    $enrollmentModel->deleteAll('survey_id=:sid', array(':sid' => $surveyID));
+                    //Save new one
+                    $enrollmentModel->survey_id = $surveyID;
+                    $enrollmentModel->programName = $value;
+                    $enrollmentModel->save();
+                }
             } else {
                 //Everything else let save where lime survey wants it to be
                 $this->set($name, $value, 'Survey', $event->get('survey'));
             }
         }
     }
-
-    /**---Direct Requests--**/
 
     /**
      * Handles and parses out function calls from Url's
@@ -153,116 +166,21 @@ class Report extends PluginBase
         }
     }
 
+
+    /************************ Report Generation ************************/
+
     /**
      * Will generate a report based off data sent in form post
      */
     function generateReport()
     {
         //Get all programs user wants a report on from form post
-        $inputPrograms = $_GET['programs'];
+        $surveysToReportOn = $_GET['surveys'];
         $featureYear = $_GET['yearToFeature'];
-        $viewFactory = new ViewFactory();
-        $content = $viewFactory->buildReportUI($this->getReportData($inputPrograms, $featureYear), $featureYear);
-//        $content = $this->buildReportUI();
+        $viewFactory = new ReportFactory();
+        $content = $viewFactory->buildReportUI($this->getReportData($surveysToReportOn, $featureYear), $featureYear);
         return $content;
     }
-
-    /**
-     * Defines the content on the report page TODO Encapsulate this?
-     **/
-    function managePrograms()
-    {
-        // Get program to add from form post
-        $programToAdd = $_GET['program'];
-        //Get all programs from table to check against for duplicates
-        $existingPrograms = $this->getPrograms();
-        // If program to add is not null or already added save to programs table
-        $programExists = in_array($programToAdd, $existingPrograms);
-        if ($programToAdd != null && !$programExists) {
-            $this->saveProgram($programToAdd);
-            // Get all programs again to refresh list after adding a program
-            $existingPrograms = $this->getPrograms();
-        } else if ($programExists) {
-            // Let user know cant add duplicate programs
-            $this->pluginManager->getAPI()->setFlash('The program: \'' . $programToAdd . '\' already exists.');
-        }
-
-        //Build up list of all programs
-        $list = "";
-        foreach ($existingPrograms as $program) {
-            if ($program != $this->defaultProgram) {
-                $list .= $program . "<br/>";
-            }
-        }
-
-        // Build up UI representing the programs and their associated surveys
-        $checkboxes = "";
-        $currentProgram = "";
-        $x = 0;
-        $programEnrollementResults = Yii::app()->db->createCommand("SELECT *
-            FROM {{community_action_program_enrollment}}
-            ORDER BY programName")->query();
-        foreach ($programEnrollementResults->readAll() as $programToAdd) {
-            if ($programToAdd != $this->defaultProgram) {
-                if ($programToAdd["programName"] != $currentProgram) {
-                    $checkboxes .= '<div class="checkbox">
-                                 <label><strong>
-                                ' . $programToAdd["programName"] . '
-                                </strong>
-                                </label>
-                                </div>';
-                    $checkboxes .= '<div class="checkbox" style="text-indent: 1em;">
-                                 <label>
-                                <input type="checkbox" value="' . $programToAdd["survey_id"] . '" name="programs[' . $x++ . ']">
-                                ' . $this->getSurveyTitle($programToAdd["survey_id"]) . '
-                                </label>
-                                </div>';
-                    $currentProgram = $programToAdd["programName"];
-                } else {
-                    $checkboxes .= '<div class="checkbox" style="text-indent: 1em;">
-                                 <label>
-                                <input type="checkbox" value="' . $programToAdd["survey_id"] . '" name="programs[' . $x++ . ']">
-                                ' . $this->getSurveyTitle($programToAdd["survey_id"]) . '
-                                </label>
-                                </div>';
-                }
-            }
-        }
-        // TODO do we want the ability to delete programs??
-        // Add hidden form fields to add params to get request and capture inputted program name
-        $form = <<<HTML
-<h5>Add a Program:</h5>
-<form name="addProgram" method="GET" action="direct">
-<input type="text" name="plugin" value="Report" style="display: none">
-<input type="text" name="function" value="managePrograms" style="display: none">
-<input type="text" name="program">
-<input type="submit" value="+">
-</form>
-HTML;
-
-        //$content is what is rendered to page
-        $content = '<div class="container well"style="margin-bottom: 20px">' . $form . '<h5>Programs:</h5>' . $list . '</div>';
-
-        //Generate Report Form
-        $content .= '<div class="container well" style="margin-bottom: 20px"><h4>Generate Report</h4>';
-
-        $content .= '<form name="generateReport" method="GET" action="direct">
-<input type="text" name="plugin" value="Report" style="display: none">
-<input type="text" name="function" value="generateReport" style="display: none">
-Year to feature:
-<select name="yearToFeature">
-    <option selected>2015</option>
-</select>
-' . $checkboxes . '
-<input type="submit" value="Generate Report">
-</form></div>';
-
-        return $content;
-    }
-
-
-    /**---Helper Functions---**/
-
 
     /**
      * @param $surveysToInclude the names of all the programs we want to generate reports for
@@ -306,8 +224,14 @@ Year to feature:
 
                 //Get program associated with this survey
                 $programEnrollment = $this->api->newModel($this, 'program_enrollment');
-                $titleResults = $programEnrollment->find('survey_id=:sid', array(':sid' => $surveyID));
-                $surveyData['programTitle'] = $titleResults["programName"];
+                $surveyProgramData = $programEnrollment->find('survey_id=:sid', array(':sid' => $surveyID));
+                $surveyData['programTitle'] = $surveyProgramData["programName"];
+                $programTitle = $surveyData['programTitle'];
+                //Get program data
+                $program = Yii::app()->db->createCommand(
+                    "SELECT * FROM {{community_action_programs}}
+                     WHERE programName = '$programTitle'")->query()->read();
+                $surveyData['programDescription'] = $program["description"];
 
                 //Get surveys title
                 $surveyData['title'] = $this->getSurveyTitle($surveyID);
@@ -318,15 +242,14 @@ Year to feature:
                 $questionData['possibleAnswers'] = array();
 
                 //Determine this questions column name in DB
-                $questionString = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
+                $questionDBColumnName = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
 
                 //Figure out if question is optional
                 $optionalAnswerCount = Yii::app()->db->createCommand(
                     "SELECT COUNT(*) AS 'count'
                          FROM {{survey_$surveyID}}
-                         WHERE `$questionString` = ''"
+                         WHERE `$questionDBColumnName` = ''"
                 )->query()->read();
-
                 if ($optionalAnswerCount['count'] > 0) {
                     $questionData['isOptional'] = 'true';
                     array_push($questionData['possibleAnswers'], 'No answer');
@@ -358,11 +281,11 @@ Year to feature:
                     $currentAnswer = $answersResults->read();
 
                     // *** Get Survey Responses for this year ***
-                    $responsesResults = Yii::app()->db->createCommand("SELECT  `" . $questionString
+                    $responsesResults = Yii::app()->db->createCommand("SELECT  `" . $questionDBColumnName
                         . "`AS AnswerValue, COUNT(*) AS `Count` FROM {{survey_$surveyID}}
                         WHERE YEAR(submitdate) = $currentYear
                         GROUP BY `"
-                        . $questionString . "`")->query();
+                        . $questionDBColumnName . "`")->query();
 
                     //Holds current questions response data by year in a graph-able format
                     $answerCount = array();
@@ -442,6 +365,303 @@ Year to feature:
         return $surveys;
     }
 
+
+    /**************** Program CRUD Functionality and UI *****************/
+
+    /**
+     * Returns an array of all programs
+     * @param null $sid
+     * @return array
+     */
+    private function getPrograms()
+    {
+        $results = $this->api->newModel($this, 'programs')->findAll();
+        return $results == null ? null : CHtml::listData($results, "id", "programName");
+    }
+
+    /**
+     * Builds the content on the Manage Program page
+     **/
+    function managePrograms()
+    {
+        //Get all programs from table to check against for duplicates
+        $existingPrograms = $this->getPrograms();
+
+        //  ** Build up add a program button and list of existing programs
+        $list = "";
+        foreach ($existingPrograms as $program) {
+            $list .= $program
+                . ' <a href="/index.php/plugins/direct?plugin=Report&function=viewProgramDetails&programName='
+                . $program
+                . '">Details</a><br/>';
+        }
+
+        $content = '<div class="container well"style="margin-bottom: 20px; margin-top: 20px;">'
+            . '<h5>Programs:</h5>'
+            . $list
+            . '<br/><a href="/index.php/plugins/direct?plugin=Report&function=addProgramForm" class="btn btn-lg btn-success">Add a Program</a>'
+            . '</div>';
+
+        // ** Generate Report Form
+
+        //Build up UI representing the programs and their associated surveys
+        $checkboxes = "";
+        $currentProgram = "";
+        $x = 0;
+        $programEnrollementResults = Yii::app()->db->createCommand("SELECT *
+            FROM {{community_action_program_enrollment}}
+            ORDER BY programName")->query();
+        //Loop through returned results showing surveys that are associated with a program
+        foreach ($programEnrollementResults->readAll() as $programToAdd) {
+            if ($programToAdd["programName"] != $currentProgram) {
+                $checkboxes .= '<div class="checkbox">
+                                 <label><strong>
+                                ' . $programToAdd["programName"] . '
+                                </strong>
+                                </label>
+                                </div>';
+                $checkboxes .= '<div class="checkbox" style="text-indent: 1em;">
+                                 <label>
+                                <input type="checkbox" value="' . $programToAdd["survey_id"] . '" name="surveys[' . $x++ . ']">
+                                ' . $this->getSurveyTitle($programToAdd["survey_id"]) . '
+                                </label>
+                                </div>';
+                $currentProgram = $programToAdd["programName"];
+            } else {
+                $checkboxes .= '<div class="checkbox" style="text-indent: 1em;">
+                                 <label>
+                                <input type="checkbox" value="' . $programToAdd["survey_id"] . '" name="surveys[' . $x++ . ']">
+                                ' . $this->getSurveyTitle($programToAdd["survey_id"]) . '
+                                </label>
+                                </div>';
+            }
+        }
+        $content .= '<div class="container well" style="margin-bottom: 20px">
+                     <h4>Generate Report</h4>';
+
+
+        // Generate feature year drop down menu
+        $yearDropDown = '<select name="yearToFeature">';
+        $thisYear = date('Y');
+        $startYear = ($thisYear - 20); //Just go back 20 years? this is probably enough for now
+        foreach (range($thisYear, $startYear) as $year) {
+            if ($year == $thisYear) {
+                $yearDropDown .= "<option selected>$year</option>";
+            } else {
+                $yearDropDown .= "<option>$year</option>";
+            }
+        }
+        $yearDropDown .= "</select>";
+
+        $content .= '<form name="generateReport" method="GET" action="direct">
+                        <input type="text" name="plugin" value="Report" style="display: none">
+                        <input type="text" name="function" value="generateReport" style="display: none">
+                        Year to feature:
+
+                        ' . $yearDropDown . $checkboxes . '
+                        <input type="submit" value="Generate Report">
+                      </form>
+                      </div>';
+
+        return $content;
+    }
+
+    /**
+     * The UI with form for adding a program
+     * @return string the
+     */
+    private function addProgramForm()
+    {
+        $content = '"<div class="container">';
+        $form = <<<HTML
+        <h5>Add a new Program</h5>
+        <br/>
+        <form name="addProgram" method="GET" action="direct">
+            <!--Add hidden form fields to add params to request and capture inputted program name-->
+            <input type="text" name="plugin" value="Report" style="display: none">
+            <input type="text" name="function" value="addProgram" style="display: none">
+            <label><strong>Name</strong></label><br/>
+            <input type="text" name="programName" required>
+            <br/>
+            <br/>
+            <label><strong>Description</strong></label><br/>
+            <textarea COLS=50 ROWS=5 name="programDescription" required></textarea>
+            <br/>
+            <input type="submit" value="Save Program" style="margin-top: 20px;margin-bottom: 20px;">
+
+        </form>
+HTML;
+        $content .= $form . "</div>";
+        return $content;
+    }
+
+    /**
+     * Actually adds new program and then reroutes to manage program view
+     */
+    private function addProgram()
+    {
+        // Get program to add details from form post
+        $programName = $_GET['programName'];
+        $programDescription = $_GET['programDescription'];
+
+        //Get all programs from table to check against for duplicates
+        $existingPrograms = $this->getPrograms();
+        // If program to add is not null or already added save to programs table
+        $programExists = in_array($programName, $existingPrograms);
+        if ($programName != null && !$programExists) {
+            $this->saveProgram($programName, $programDescription);
+        } else if ($programExists) {
+            // Let user know cant add duplicate programs
+            $this->pluginManager->getAPI()->setFlash('The program: \'' . $programName . '\' already exists.');
+        }
+        //Redirect to manage programs page
+        Yii::app()->getController()->redirect(array('/plugins/direct?plugin=Report&function=managePrograms'));
+    }
+
+    /**
+     * Saves a new program to DB
+     * @param $programName
+     */
+    private function saveProgram($programName, $description)
+    {
+        $programModel = $this->api->newModel($this, 'programs');
+        $programModel->programName = $programName;
+        $programModel->description = $description;
+        $programModel->save();
+    }
+
+
+    /**
+     * Builds the content on the Program Details page
+     *
+     * @return string the program details page html
+     */
+    private function viewProgramDetails()
+    {
+        $programName = $_GET['programName'];
+
+        //Get program data
+        $program = Yii::app()->db->createCommand(
+            "SELECT * FROM {{community_action_programs}}
+            WHERE programName = '$programName'")->query()->read();
+
+        // ** Build the view **
+
+        $content = '<div class="container"><br/><h1>'
+            . $programName
+            . '</h1>
+            <br/>';
+
+        //Description
+        $content .= '<h4>Description:</h4>
+        <div class="well" style="padding-bottom: 10px">
+        ' . $program["description"] . '</div></br>';
+
+        //Delete Button
+        $content .= '<a class="btn-large btn-warning"style="margin: 20px;text-decoration: none;"
+        href="/index.php/plugins/direct?plugin=Report&function=editProgram&programName='
+            . $programName
+            . '">Edit Program</a>
+            <a class="btn-large btn-danger"style="margin: 20px;text-decoration: none;"
+            href="/index.php/plugins/direct?plugin=Report&function=deleteProgram&programName='
+            . $programName
+            . '">Delete Program</a>
+            *Note this only deletes the program and its data <strong>not</strong> any survey data.
+            <br/>
+            <br/>';
+
+        $content .= "</div>";
+        return $content;
+    }
+
+    /**
+     * Builds the content on the Edit Program page
+     *
+     * @return string the edit program page html
+     */
+    private function editProgram()
+    {
+        $programName = $_GET['programName'];
+
+        $content = '"<div class="container">';
+        $content .= "<h2>$programName</h2>";
+
+        $form = <<<HTML
+        <form name="addProgram" method="GET" action="direct">
+            <!--Add hidden form fields to add params to request and capture inputted program name-->
+            <input type="text" name="plugin" value="Report" style="display: none">
+            <input type="text" name="function" value="updateProgram" style="display: none">
+HTML;
+        $form .= '<input type="text" name="programName" value="' . $programName . '"style="display: none;" >';
+        $form .= <<<HTML
+            <label><strong>Description</strong></label><br/>
+            <textarea COLS=50 ROWS=5 name="programDescription" required>
+HTML;
+
+        //Get program data
+        $program = Yii::app()->db->createCommand(
+            "SELECT * FROM {{community_action_programs}}
+            WHERE programName = '$programName'")->query()->read();
+
+        $form .= $program["description"];
+        $form .= '</textarea>
+            <br/>
+            <input type="submit" value="Update Program" style="margin-top: 20px;margin-bottom: 20px;">
+
+        </form>';
+
+        $content .= $form . "</div>";
+        return $content;
+    }
+
+
+    /**
+     * Updates the actual program record and then redirects to the manage program page
+     */
+    private function updateProgram()
+    {
+        $programName = $_GET['programName'];
+        $newProgramDescription = $_GET['programDescription'];
+
+        //Get program data need primary key to update name is not enough
+        $program = Yii::app()->db->createCommand(
+            "SELECT * FROM {{community_action_programs}}
+            WHERE programName = '$programName'")->query()->read();
+
+        //Update program record
+        $pid = $program['id'];
+        Yii::app()->db->createCommand(
+            "UPDATE {{community_action_programs}}
+            SET description= '$newProgramDescription'
+            WHERE id = $pid")->query();
+
+        //Redirect to manage programs page
+        Yii::app()->getController()->redirect(array('/plugins/direct?plugin=Report&function=managePrograms'));
+    }
+
+    /**
+     * Deletes the requested program and its data. It also de-associates any surveys that were tied to the deleted
+     * program.
+     */
+    private function deleteProgram()
+    {
+        $programName = $_GET['programName'];
+
+        //Delete program record
+        $programModel = $this->api->newModel($this, 'programs');
+        $programModel->deleteAll('programName=:PN', array(':PN' => $programName));
+
+        //Delete survey associations with this program
+        $enrollmentModel = $this->api->newModel($this, 'program_enrollment');
+        $enrollmentModel->deleteAll('programName=:PN', array(':PN' => $programName));
+
+        //Redirect to manage programs page
+        Yii::app()->getController()->redirect(array('/plugins/direct?plugin=Report&function=managePrograms'));
+    }
+
+
+    /**************** Utility Functions *****************/
+
     /**
      * Checks for if user is authenticated and of type superadmin
      * TODO Do we really want to authenticate as super admin? probably just any user being logged in is enough for us?
@@ -468,29 +688,6 @@ Year to feature:
         return $titleResults->surveyls_title;
     }
 
-    /**
-     * Returns an array of all programs
-     * @param null $sid
-     * @return array
-     */
-    private function getPrograms($sid = null)
-    {
-        $programModel = $this->api->newModel($this, 'programs');
-        $results = $sid == null ? $programModel->findAll() : $programModel->findAll('survey_id=:sid', array(':sid' => $sid));
-        return $results == null ? null : CHtml::listData($results, "id", "programName");
-    }
-
-    /**
-     * Saves a new program mode
-     * @param $programName
-     */
-    private function saveProgram($programName)
-    {
-        $programModel = $this->api->newModel($this, 'programs');
-        $programModel->programName = $programName;
-        $programModel->save();
-    }
 }
-
 
 ?>
