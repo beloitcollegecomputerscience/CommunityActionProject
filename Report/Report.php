@@ -49,6 +49,16 @@ class Report extends PluginBase
                 'programName' => 'string'));
         }
 
+        //Create registered question group table
+        if (!$this->api->tableExists($this, 'report_question_groups')) {
+            $this->api->createTable($this, 'report_question_groups', array(
+                'group_name' => 'string',
+                'description' => 'string',
+                'date_added' => 'string',
+                'added_by' => 'string',
+                'include_in_report' => 'boolean'));
+        }
+
         // Display Welcome Message to User
         $this->pluginManager->getAPI()->setFlash('Thank you for Activating the
             Community Action Plugin.');
@@ -366,6 +376,108 @@ class Report extends PluginBase
     }
 
 
+    /******************* Question Group Management **********************/
+
+    /**
+     * @return string
+     */
+    function addNewQuestionGroupForm()
+    {
+
+        print_r($this->api->getCurrentUser()->email);
+
+        $content = '"<div class="container">';
+        $form = <<<HTML
+        <h3>Register new question group</h3>
+        <br/>
+        <form name="addProgram" method="GET" action="direct">
+            <!--Add hidden form fields to add params to request and capture inputted program name-->
+            <input type="text" name="plugin" value="Report" style="display: none">
+            <input type="text" name="function" value="registerQuestionGroup" style="display: none">
+            <label><strong>Question Group Name</strong></label><br/>
+            <input type="text" name="questionGroupName" required>
+            <br/>
+            <br/>
+            <label><strong>Include in Report?</strong></label><br/>
+            <div class="radio">
+                <label>
+                    <input type="radio" name="includeInReport" id="includeInReport1" value="Yes" checked>
+                    Yes
+                </label>
+            </div>
+            <div class="radio">
+              <label>
+                <input type="radio" name="includeInReport" id="includeInReport2" value="No">
+                No
+              </label>
+            </div>
+
+            <br/>
+            <label><strong>Description</strong></label><br/>
+            <textarea COLS=50 ROWS=5 name="groupDescription" required></textarea>
+            <br/>
+            <input type="submit" value="Register" style="margin-top: 20px;margin-bottom: 20px;">
+
+        </form>
+HTML;
+
+
+        //Form for importing new question group TODO Get this working
+//        $content .= <<<HTML
+//<div id="import">
+//            <form>
+//                <ul>
+//                    <li>
+//                        <label for='the_file'><strong>Select question group file (*.lsg/*.csv):</strong></label><br/>
+//                        <input id='the_file' name="the_file" type="file" />
+//                    </li>
+//                </ul>
+//                <p><input type='submit' value='Register question group' />
+//<input type='hidden' name='action' value='importgroup' />
+//</form>
+//</div>'
+//HTML;
+
+
+        $content .= $form . "</div>";
+        return $content;
+
+    }
+
+    /**
+     * Actually registers a new question group and then reroutes to manage program view
+     */
+    private function registerQuestionGroup()
+    {
+        // Get program to add details from form post
+        $questionGroupName = $_GET['questionGroupName'];
+        $groupDescription = $_GET['groupDescription'];
+
+        //Get all registered questionGroups from table to check against for duplicates
+        $results = $this->api->newModel($this, 'report_question_groups')->findAll();
+        $results = CHtml::listData($results, "group_name", "group_name");
+        if (!in_array($questionGroupName, $results)) {
+
+            //get user email who registered group
+            $userEmail = $this->api->getCurrentUser()->email;
+//            print_r($userEmail);
+            //if not already registered create new record and save
+            $questionGroupModel = $this->api->newModel($this, 'report_question_groups');
+            $questionGroupModel->group_name = $questionGroupName;
+            $questionGroupModel->description = $groupDescription;
+            $questionGroupModel->date_added = date('Y-m-d');
+            $questionGroupModel->added_by = (string)$userEmail;
+            $questionGroupModel->include_in_report = $_GET['includeInReport'] == "Yes" ? true : false;
+            $questionGroupModel->save();
+        } else {
+            $this->pluginManager->getAPI()->setFlash('The question group: \'' . $questionGroupName . '\' is already registered');
+        }
+
+        //Redirect to manage programs page
+        Yii::app()->getController()->redirect(array('/plugins/direct?plugin=Report&function=managePrograms'));
+    }
+
+
     /**************** Program CRUD Functionality and UI *****************/
 
     /**
@@ -402,7 +514,7 @@ class Report extends PluginBase
             . '<br/><a href="/index.php/plugins/direct?plugin=Report&function=addProgramForm" class="btn btn-lg btn-success">Add a Program</a>'
             . '</div>';
 
-        // ** Generate Report Form
+        // ** Programs List and Add new program button
 
         //Build up UI representing the programs and their associated surveys
         $checkboxes = "";
@@ -436,6 +548,26 @@ class Report extends PluginBase
                                 </div>';
             }
         }
+
+        // ** Registered Question Groups
+        $content .= '<div class="container well" style="margin-bottom: 20px">
+                     <h4>Registered Core Question Groups</h4>';
+
+
+        //Get all existing registered question groups
+        $results = $this->api->newModel($this, 'report_question_groups')->findAll();
+        $resultList = CHtml::listData($results, "gid", "group_name");
+        foreach ($resultList as $result) {
+            $content .= $result . '<br/>';
+        }
+
+        //Add new QG button
+        $content .= '<a href="/index.php/plugins/direct?plugin=Report&function=addNewQuestionGroupForm" class="btn btn-success pull-right">Register New Question Group</a>';
+
+        $content .= '</div>';
+
+
+        // ** Generate Report Form
         $content .= '<div class="container well" style="margin-bottom: 20px">
                      <h4>Generate Report</h4>';
 
