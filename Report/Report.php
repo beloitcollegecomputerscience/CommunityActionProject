@@ -213,6 +213,8 @@ class Report extends PluginBase
             $surveyData['programTitle'] = $surveyProgramData["programName"];
             $programTitle = $surveyData['programTitle'];
             //Get program data
+
+            //TODO this breaks if program name has an ' <- apostrophe in it
             $program = Yii::app()->db->createCommand(
                 "SELECT * FROM {{community_action_programs}}
                      WHERE programName = '$programTitle'")->query()->read();
@@ -551,6 +553,8 @@ HTML;
             ORDER BY programName")->query();
         //Loop through returned results showing surveys that are associated with a program
         foreach ($programEnrollementResults->readAll() as $programToAdd) {
+
+            //TODO add check here to make sure associated survey has actually been activated before showing to user other wise it will break when generating a report
             if ($programToAdd["programName"] != $currentProgram) {
                 $checkboxes .= '<div class="checkbox">
                                  <label><strong>
@@ -583,6 +587,7 @@ HTML;
         //Get all existing registered question groups
         $results = $this->api->newModel($this, 'report_question_groups')->findAll();
         $resultList = CHtml::listData($results, "gid", "group_name");
+
         foreach ($resultList as $result) {
             $content .= $result . '<br/>';
         }
