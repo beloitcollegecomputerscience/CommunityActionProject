@@ -1,4 +1,4 @@
-* Installing and activating our plugin in LimeSurvey allows programs to be created and reports to be generated. To activate start at the home page and click on the plug-shaped icon in the top-left part of the screen.
+* Installing and activating our plugin in LimeSurvey allows programs to be created and reports to be generated. To activate start at the home page and click on the plug-shaped icon in the top-right part of the screen.
 
 ![Install Plugin](../img/install-plugin.png)
 
@@ -12,7 +12,7 @@
 
 <br />
 
-* The _Status_ icon for the _Community_\__Action_ plugin should now be a large green arrow (“active”)! The plugin is now ready to be used. 
+* The _Status_ icon for the _Community_\__Action_ plugin should now be a large green arrow (“active”)! The plugin is now ready to be used.  **Only do this for the Community_Action plugin unless instructed otherwise.** 
 
 <br />
 

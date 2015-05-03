@@ -59,6 +59,7 @@ Then you need to upload the files to your web server using an FTP program, such 
 * LimeSurvey needs to connect to create its database and the tables inside it. If you have a dedicated database created on your server beforehand, you can type in the name. Otherwise, LimeSurvey will create a new database under that name. 
 
 * You will need the **username** and **password** for the desired user of your database during this process.
-after the installation is done, you can use the same link, http://www.yourdomain.org/limesurvey/admin, to access your LimeSurvey login page!
+
+* After the installation is done, you can use the same link, http://www.yourdomain.org/limesurvey/admin, to access your LimeSurvey login page!
 
 

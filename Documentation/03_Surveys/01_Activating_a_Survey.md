@@ -26,12 +26,14 @@ Note: Once you activate a survey you can no longer edit much of its content, suc
 
 * After the button is clicked, you will be taken to a new screen which should tell you the survey has been activated. 
 
-* There will be a prompt explaining that the survey can be taken by anyone, and a button on the bottom left to switch to closed-access mode where a user needs a token to take the survey.
+* There will be a prompt explaining that the survey can be taken by anyone, and a **button on the bottom left to switch to closed-access mode** where a user needs a token to take the survey.
 	* We recommend that you choose _Closed-Access Mode_, so that only those you sent a token to may take the survey (i.e. your customers and clients)
 
 <p></p>
 
-* After you select which access mode you desire, you will be taken to a new screen with an overview of the survey’s details. Your survey is now active.
+* At this point a warning stating that **“Tokens have not been initialized for this survey”** will appear. Click on the _Initiate tokens_ button and go to the instructions listed in the <a href="http://communityactionsurvey.org/guide/index.php/Token_Management">Token Management</a> section starting with the bullet point with two asterisks **.
+
+* You will then be taken to a new screen with an overview of the survey’s details. Your survey is now active.
 
 <br />
 
