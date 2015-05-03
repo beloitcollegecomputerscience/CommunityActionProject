@@ -1,5 +1,7 @@
 Tokens allow the administrator to invite a group of people to participate in a survey, keep track of who has completed the survey, and ensure that each person only participated once. 
 
+**NOTE: The following steps must be done for each individual survey.**
+
 With tokens, you can:
 
 * Import a list of names and email addresses for participants (from a CSV file or an LDAP query)
@@ -17,7 +19,7 @@ To get to token management, navigate to the desired survey (in this example, Com
 
 <br />
 
-* To make tokens in bulk, prepare a .csv spreadsheet with three columns beginning with _firstname_, _lastname_, and _email_. Fill out these columns with the information of the recipients of the survey. 
+* To make tokens in bulk, prepare a spreadsheet (**saved as a .csv file**) with three columns beginning with _firstname_, _lastname_, and _email_. Fill out these columns with the information of the recipients of the survey. 
 * The spreadsheet should resemble:
 
 <br />

@@ -1,10 +1,5 @@
 * Go to the link http://www.yourdomain.org/limesurvey/admin to access the login page
 
-<!--Make sure to change the URL to match the location of the picture on the server-->
-<!--<div>
-	<img src="http://csserver.beloit.edu/~roehln/daux.io-master/img/login.png" />
-</div>-->
-
 ![Login](../img/login.png)
 
 * Enter your username and password.
