@@ -241,7 +241,7 @@ class Report extends PluginBase
 
             //Get all registered question groups and loop getting questions associated with it
             $registeredQuestionGroups = Yii::app()->db->
-            createCommand("SELECT cg.group_name
+            createCommand("SELECT cg.group_name, cg.description
                            FROM {{community_action_report_question_groups}} cg"
             )->query();
 
@@ -250,8 +250,11 @@ class Report extends PluginBase
                 /**GENERAL Question Group Data**/
                 $currentQuestionGroupData = array();
                 $currentQuestionGroupData['questionGroupTitle'] = $currentQuestionGroupTitle = $currentQuestionGroup['group_name'];
+                $currentQuestionGroupData['description'] = $currentQuestionGroup['description'];
                 $currentQuestionGroupData['questions'] = array();
 
+
+                /** Question Group associated QUESTION and RESPONSES */
 
                 //Get all questions associated with current survey and question group
                 $query = "SELECT

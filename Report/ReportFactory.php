@@ -20,7 +20,7 @@ class ReportFactory
 </script>
 HTML;
         $content .= '<div class="container">';
-        $content .= "<h1>Community Action Annual Report " . $yearToFeature . "</h1>";
+        $content .= "<br/><h1>Community Action Annual Report " . $yearToFeature . "</h1><br/>";
         $i = 0;
         foreach ($surveys as $survey) {
             $content .= '<br/>';
@@ -50,6 +50,8 @@ HTML;
 
                     $questionGroupTitle = $questionGroup['questionGroupTitle'];
                     $content .= "<h3>$questionGroupTitle</h3><br/>";
+
+                    $content .= '<p>' . $questionGroup['description'] . '</p><br/>';
 
                     //Loop for each question inside of question group
                     foreach ($questionGroup['questions'] as $question) {
