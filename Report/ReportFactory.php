@@ -27,10 +27,10 @@ HTML;
             //Program Title
             $content .= "<h2>Program: " . $survey["programTitle"] . "</h2>";
             //Program Description
-            $content .= '<p>'.$survey['programDescription'].'</p>';
+            $content .= '<p>' . $survey['programDescription'] . '</p>';
 
             //Survey Title
-            $content .= "<br /><h3>" . $survey['title'] . "</h3>";
+            $content .= "<br /><h2>" . $survey['title'] . "</h2>";
 
             //Check if survey uses tokens
             if (!is_null($survey['tokenCount'])) {
@@ -43,40 +43,52 @@ HTML;
             //Total survey responses in feature year
             $content .= "Responses received in feature year: " . $survey['totalResponses'] . "<br/>";
 
-            foreach ($survey['questions'] as $question) {
-                $content .= "<h4>" . $question['title'] . "</h4><br/>";
+            //Loop for each registered question group
+            foreach ($survey['questionGroups'] as $questionGroup) {
+                //Check for if question group actually exists
+                if (!empty($questionGroup['questions'])) {
 
-                //**Generate Charts**
+                    $questionGroupTitle = $questionGroup['questionGroupTitle'];
+                    $content .= "<h3>$questionGroupTitle</h3><br/>";
 
-                //Check for if feature year has data to show
-                if (!is_null($question['answerCount'][$yearToFeature])) {
-                    $content .= '<div class="row">';
-                    //Draw Column Chart
-                    $content .= $this->generateColumnChart($question['answerCount'][$yearToFeature], $i++);
-                    //Draw Pie Chart
-                    $content .= $this->generatePieChart($question['answerCount'][$yearToFeature], $i++);
+                    //Loop for each question inside of question group
+                    foreach ($questionGroup['questions'] as $question) {
+                        $content .= "<h4>" . $question['title'] . "</h4><br/>";
 
-                    $content .= '</div>';
-                } else {
-                    //No Data for feature year
-                    $content .= "<h2>No data for selected feature year.</h2>";
+                        //**Generate Charts**
+
+                        //Check for if feature year has data to show
+                        if (!is_null($question['answerCount'][$yearToFeature])) {
+                            $content .= '<div class="row">';
+                            //Draw Column Chart
+                            $content .= $this->generateColumnChart($question['answerCount'][$yearToFeature], $i++);
+                            //Draw Pie Chart
+                            $content .= $this->generatePieChart($question['answerCount'][$yearToFeature], $i++);
+
+                            $content .= '</div>';
+                        } else {
+                            //No Data for feature year
+                            $content .= "<h2>No data for selected feature year.</h2>";
+                        }
+
+                        //Get first year of valid data
+                        $firstYearData = reset($question['answerCount']);
+
+                        //Always Draw Line Chart
+                        $content .= '<div class="row">' . $this->generateAreaChart($question['answerCount'], $i++, $firstYearData['year']) . '</div>';
+
+                        //Build up possible answers list
+                        $x = !is_null($question['answerCount'][$firstYearData['year']]['0']['0']['A0']) ? 0 : 1;
+                        $content .= '<div style="margin-left: 60px">';
+                        foreach ($question['possibleAnswers'] as $answer) {
+                            $content .= '<br/>A' . $x . " : " . $answer;
+                            $x++;
+                        }
+                        $content .= "</div><br /><br/>";
+                        $i += 2;
+                    }
                 }
 
-                //Get first year of valid data
-                $firstYearData = reset($question['answerCount']);
-
-                //Always Draw Line Chart
-                $content .= '<div class="row">' . $this->generateAreaChart($question['answerCount'], $i++, $firstYearData['year']) . '</div>';
-
-                //Build up possible answers list
-                $x = !is_null($question['answerCount'][$firstYearData['year']]['0']['0']['A0']) ? 0 : 1;
-                $content .= '<div style="margin-left: 60px">';
-                foreach ($question['possibleAnswers'] as $answer) {
-                    $content .= '<br/>A' . $x . " : " . $answer;
-                    $x++;
-                }
-                $content .= "</div><br /><br/>";
-                $i += 2;
             }
         }
         $content .= '</div>';
