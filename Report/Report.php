@@ -579,17 +579,24 @@ HTML;
             }
         }
 
+
+        //TODO Clean up UI here
+
         // ** Registered Question Groups
         $content .= '<div class="container well" style="margin-bottom: 20px">
-                     <h4>Registered Core Question Groups</h4>';
+                     <h4>Registered Core Question Groups</h4><br/>
+                     <strong>Name</strong> | <strong>Include in Report?</strong><br/>';
 
 
-        //Get all existing registered question groups
-        $results = $this->api->newModel($this, 'report_question_groups')->findAll();
-        $resultList = CHtml::listData($results, "gid", "group_name");
+        //Get all registered question groups
+        $registeredQuestionGroups = Yii::app()->db->
+        createCommand("SELECT group_name, include_in_report
+                           FROM {{community_action_report_question_groups}}"
+        )->query();
 
-        foreach ($resultList as $result) {
-            $content .= $result . '<br/>';
+        foreach ($registeredQuestionGroups->readAll() as $currentQuestionGroup) {
+            $includeInReport = ($currentQuestionGroup['include_in_report'])?'Yes':'No';
+            $content .= $currentQuestionGroup['group_name'] . '  |  ' . $includeInReport  .  '<br/>';
         }
 
         //Add new QG button
