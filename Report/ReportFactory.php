@@ -19,15 +19,26 @@ class ReportFactory
     google.load("visualization", "1.1", {packages:["bar", "corechart"]});
 </script>
 HTML;
+
+        //Report Header
         $content .= '<div class="container">';
         $content .= "<br/><h1>Community Action Annual Report " . $yearToFeature . "</h1><br/>";
+
+        //Loop for all surveys
         $i = 0;
+        $currentProgramName = '';
         foreach ($surveys as $survey) {
             $content .= '<br/>';
-            //Program Title
-            $content .= "<h2>Program: " . $survey["programTitle"] . "</h2>";
-            //Program Description
-            $content .= '<p>' . $survey['programDescription'] . '</p>';
+
+            //Check if current survey is associated with a new program
+            if ($currentProgramName != $survey["programTitle"]) {
+                //Program Title
+                $content .= "<h2>Program: " . $survey["programTitle"] . "</h2>";
+                //Program Description
+                $content .= '<p>' . $survey['programDescription'] . '</p>';
+                //update current program
+                $currentProgramName = $survey["programTitle"];
+            }
 
             //Survey Title
             $content .= "<br /><h2>" . $survey['title'] . "</h2>";
