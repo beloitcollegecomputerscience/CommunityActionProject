@@ -407,12 +407,12 @@ class Report extends PluginBase
     /******************* Question Group Management **********************/
 
     /**
-     * @return string
+     * Builds the content of the add Question Group form.
+     *
+     * @return string the html of to be rendered
      */
     function addNewQuestionGroupForm()
     {
-
-        print_r($this->api->getCurrentUser()->email);
 
         $content = '"<div class="container">';
         $form = <<<HTML
@@ -595,8 +595,8 @@ HTML;
         )->query();
 
         foreach ($registeredQuestionGroups->readAll() as $currentQuestionGroup) {
-            $includeInReport = ($currentQuestionGroup['include_in_report'])?'Yes':'No';
-            $content .= $currentQuestionGroup['group_name'] . '  |  ' . $includeInReport  .  '<br/>';
+            $includeInReport = ($currentQuestionGroup['include_in_report']) ? 'Yes' : 'No';
+            $content .= $currentQuestionGroup['group_name'] . '  |  ' . $includeInReport . '<br/>';
         }
 
         //Add new QG button
