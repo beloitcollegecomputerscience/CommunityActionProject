@@ -848,8 +848,10 @@ HTML;
     }
 
     /**
-     * @param $surveyID
-     * @return mixed|null
+     * Gets the title for the survey with the passed survey ID
+     *
+     * @param $surveyID the surveyId of the survey to find
+     * @return mixed|null the title of the found survey
      */
     private function getSurveyTitle($surveyID)
     {
@@ -859,6 +861,12 @@ HTML;
     }
 
     /**
+     * Formats the passed string for use in mySql statements.
+     *
+     * Checks For:
+     *   - Apostrophe's -> Replaces with proper escape character /'
+     *   - Leading and trailing white spaces -> trim all white space from beginning and end of passed string
+     *
      * @param $inputString this User inputted string that could potentially hold something that could break our mySQL
      * statements
      * @return string input string properly formatted
