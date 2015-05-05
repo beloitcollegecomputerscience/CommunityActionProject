@@ -858,6 +858,26 @@ HTML;
         return $titleResults->surveyls_title;
     }
 
+    /**
+     * @param $inputString this User inputted string that could potentially hold something that could break our mySQL
+     * statements
+     * @return string input string properly formatted
+     */
+    private function sanitizeForSql($inputString)
+    {
+        $returnString = '';
+
+        //Check for apostrophies
+        if (strpos($inputString, "'") !== false) {
+            $returnString = preg_replace("'", "/'", $returnString);
+        }
+
+        //Trim white spaces
+        $returnString = trim($returnString);
+
+        return $returnString;
+    }
+
 }
 
 ?>
