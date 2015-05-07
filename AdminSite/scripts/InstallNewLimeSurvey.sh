@@ -1,5 +1,3 @@
-
-
 #!/bin/bash
 # Script for Automatically downloading and doing a new install of limesurvey
 # in proper folder

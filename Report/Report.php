@@ -211,10 +211,11 @@ class Report extends PluginBase
             $programEnrollment = $this->api->newModel($this, 'program_enrollment');
             $surveyProgramData = $programEnrollment->find('survey_id=:sid', array(':sid' => $surveyID));
             $surveyData['programTitle'] = $surveyProgramData["programName"];
-            $programTitle = $surveyData['programTitle'];
-            //Get program data
 
-            //TODO this breaks if program name has an ' <- apostrophe in it
+            //Get program title ready to pass to query
+            $programTitle = $this->sanitizeForSql($surveyData['programTitle']);
+
+            //Get program data
             $program = Yii::app()->db->createCommand(
                 "SELECT * FROM {{community_action_programs}}
                      WHERE programName = '$programTitle'")->query()->read();
@@ -251,12 +252,15 @@ class Report extends PluginBase
 
                 /**GENERAL Question Group Data**/
                 $currentQuestionGroupData = array();
-                $currentQuestionGroupData['questionGroupTitle'] = $currentQuestionGroupTitle = $currentQuestionGroup['group_name'];
+                $currentQuestionGroupData['questionGroupTitle'] =  $currentQuestionGroup['group_name'];
                 $currentQuestionGroupData['description'] = $currentQuestionGroup['description'];
                 $currentQuestionGroupData['questions'] = array();
 
 
                 /** Question Group associated QUESTION and RESPONSES */
+
+                //Sanitize question group name before passing to query
+                $currentQuestionGroupTitle = $this->sanitizeForSql($currentQuestionGroup['group_name']);
 
                 //Get all questions associated with current survey and question group
                 $query = "SELECT
