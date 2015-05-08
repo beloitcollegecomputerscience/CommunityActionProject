@@ -76,7 +76,7 @@ class Report extends PluginBase
             $menu = $event->get('menu', array());
             $menu['items']['left'][] = array(
                 //TODO Make this URL Dynamic
-                'href' => "/index.php/plugins/direct?plugin=Report&function=managePrograms",
+                'href' => "plugins/direct?plugin=Report&function=managePrograms",
                 'alt' => gT('CA Report'),
                 'image' => 'chart_bar.png',
             );
@@ -506,7 +506,7 @@ HTML;
         }
 
         //Redirect to manage programs page
-        Yii::app()->getController()->redirect(array('/plugins/direct?plugin=Report&function=managePrograms'));
+        Yii::app()->getController()->redirect(array('direct?plugin=Report&function=managePrograms'));
     }
 
 
@@ -535,7 +535,7 @@ HTML;
         $list = "";
         foreach ($existingPrograms as $program) {
             $list .= $program
-                . ' <a href="/index.php/plugins/direct?plugin=Report&function=viewProgramDetails&programName='
+                . ' <a href="direct?plugin=Report&function=viewProgramDetails&programName='
                 . $program
                 . '">Details</a><br/>';
         }
@@ -543,7 +543,7 @@ HTML;
         $content = '<div class="container well"style="margin-bottom: 20px; margin-top: 20px;">'
             . '<h5>Programs:</h5>'
             . $list
-            . '<br/><a href="/index.php/plugins/direct?plugin=Report&function=addProgramForm" class="btn btn-lg btn-success">Add a Program</a>'
+            . '<br/><a href="direct?plugin=Report&function=addProgramForm" class="btn btn-lg btn-success">Add a Program</a>'
             . '</div>';
 
         // ** Programs List and Add new program button
@@ -604,7 +604,7 @@ HTML;
         }
 
         //Add new QG button
-        $content .= '<a href="/index.php/plugins/direct?plugin=Report&function=addNewQuestionGroupForm" class="btn btn-success pull-right">Register New Question Group</a>';
+        $content .= '<a href="direct?plugin=Report&function=addNewQuestionGroupForm" class="btn btn-success pull-right">Register New Question Group</a>';
 
         $content .= '</div>';
 
