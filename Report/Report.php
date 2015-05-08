@@ -879,9 +879,9 @@ HTML;
     {
         $returnString = '';
 
-        //Check for apostrophies
+        //Check for apostrophes
         if (strpos($inputString, "'") !== false) {
-            $returnString = preg_replace("'", "/'", $returnString);
+            $returnString = str_replace("'", "\'", $inputString);
         }
 
         //Trim white spaces
