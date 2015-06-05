@@ -244,151 +244,155 @@ class Report extends PluginBase
 
             //Get all registered question groups and loop getting questions associated with it
             $registeredQuestionGroups = Yii::app()->db->
-            createCommand("SELECT cg.group_name, cg.description
+            createCommand("SELECT cg.group_name, cg.description, cg.include_in_report
                            FROM {{community_action_report_question_groups}} cg"
             )->query();
 
             foreach ($registeredQuestionGroups->readAll() as $currentQuestionGroup) {
 
-                /**GENERAL Question Group Data**/
-                $currentQuestionGroupData = array();
-                $currentQuestionGroupData['questionGroupTitle'] =  $currentQuestionGroup['group_name'];
-                $currentQuestionGroupData['description'] = $currentQuestionGroup['description'];
-                $currentQuestionGroupData['questions'] = array();
+                //Check if registered question group should be included in report
+                if ($currentQuestionGroup['include_in_report']) {
 
+                    //If question group is supposed to be included continue
 
-                /** Question Group associated QUESTION and RESPONSES */
+                    /**GENERAL Question Group Data**/
+                    $currentQuestionGroupData = array();
+                    $currentQuestionGroupData['questionGroupTitle'] = $currentQuestionGroup['group_name'];
+                    $currentQuestionGroupData['description'] = $currentQuestionGroup['description'];
+                    $currentQuestionGroupData['questions'] = array();
 
-                //Sanitize question group name before passing to query
-                $currentQuestionGroupTitle = $this->sanitizeForSql($currentQuestionGroup['group_name']);
+                    /** Question Group associated QUESTION and RESPONSES */
 
-                //Get all questions associated with current survey and question group
-                $query = "SELECT
-              q.sid, q.gid, q.qid, q.question
-              FROM {{questions}} q
-              INNER JOIN {{groups}} g ON g.gid = q.gid
-              WHERE q.sid = $surveyID
-              AND g.group_name = '$currentQuestionGroupTitle'
-              GROUP BY q.qid";
-                $results = Yii::app()->db->createCommand($query)->query();
+                    //Sanitize question group name before passing to query
+                    $currentQuestionGroupTitle = $this->sanitizeForSql($currentQuestionGroup['group_name']);
 
-                // Loop through all questions for current Question Group
-                foreach ($results->readAll() as $questionRow) {
+                    //Get all questions associated with current survey and question group
+                    $query = "SELECT
+                      q.sid, q.gid, q.qid, q.question
+                      FROM {{questions}} q
+                      INNER JOIN {{groups}} g ON g.gid = q.gid
+                      WHERE q.sid = $surveyID
+                      AND g.group_name = '$currentQuestionGroupTitle'
+                      GROUP BY q.qid";
+                    $results = Yii::app()->db->createCommand($query)->query();
 
-                    //This holds general information about each question
-                    $questionData = array();
-                    $questionData['title'] = flattenText($questionRow['question']);
-                    $questionData['possibleAnswers'] = array();
+                    // Loop through all questions for current Question Group
+                    foreach ($results->readAll() as $questionRow) {
 
-                    //Determine this questions column name in DB
-                    $questionDBColumnName = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
+                        //This holds general information about each question
+                        $questionData = array();
+                        $questionData['title'] = flattenText($questionRow['question']);
+                        $questionData['possibleAnswers'] = array();
 
-                    //Figure out if question is optional
-                    $optionalAnswerCount = Yii::app()->db->createCommand(
-                        "SELECT COUNT(*) AS 'count'
+                        //Determine this questions column name in DB
+                        $questionDBColumnName = $questionRow['sid'] . 'X' . $questionRow['gid'] . 'X' . $questionRow['qid'];
+
+                        //Figure out if question is optional
+                        $optionalAnswerCount = Yii::app()->db->createCommand(
+                            "SELECT COUNT(*) AS 'count'
                          FROM {{survey_$surveyID}}
                          WHERE `$questionDBColumnName` = ''"
-                    )->query()->read();
-                    if ($optionalAnswerCount['count'] > 0) {
-                        $questionData['isOptional'] = 'true';
-                        array_push($questionData['possibleAnswers'], 'No answer');
-                    } else {
-                        $questionData['isOptional'] = 'false';
-                    }
+                        )->query()->read();
+                        if ($optionalAnswerCount['count'] > 0) {
+                            $questionData['isOptional'] = 'true';
+                            array_push($questionData['possibleAnswers'], 'No answer');
+                        } else {
+                            $questionData['isOptional'] = 'false';
+                        }
 
-                    //Get all years of valid data
-                    $yearsOfData = Yii::app()->db->createCommand(
-                        "SELECT DISTINCT(year(submitdate)) as 'year' FROM {{survey_$surveyID}}"
-                    )->query();
-
-                    $firstYear = true;
-                    //Loop on each question for each valid year
-                    foreach ($yearsOfData->readAll() as $year) {
-
-                        //get current year
-                        $currentYear = $year['year'];
-
-                        // *** Get all possible answers for current question ***
-                        //TODO draw this out of year loop inefficient to do this every time
-                        $answersResults = Yii::app()->db->createCommand(
-                            " SELECT `code` AS AnswerValue, answer AS AnswerText
-                              FROM {{answers}}
-                              WHERE qid = " . $questionRow['qid']
+                        //Get all years of valid data
+                        $yearsOfData = Yii::app()->db->createCommand(
+                            "SELECT DISTINCT(year(submitdate)) as 'year' FROM {{survey_$surveyID}}"
                         )->query();
 
-                        //Read first result
-                        $currentAnswer = $answersResults->read();
+                        $firstYear = true;
+                        //Loop on each question for each valid year
+                        foreach ($yearsOfData->readAll() as $year) {
 
-                        // *** Get Survey Responses for this year ***
-                        $responsesResults = Yii::app()->db->createCommand("SELECT  `" . $questionDBColumnName
-                            . "`AS AnswerValue, COUNT(*) AS `Count` FROM {{survey_$surveyID}}
+                            //get current year
+                            $currentYear = $year['year'];
+
+                            // *** Get all possible answers for current question ***
+                            //TODO draw this out of year loop inefficient to do this every time
+                            $answersResults = Yii::app()->db->createCommand(
+                                " SELECT `code` AS AnswerValue, answer AS AnswerText
+                              FROM {{answers}}
+                              WHERE qid = " . $questionRow['qid']
+                            )->query();
+
+                            //Read first result
+                            $currentAnswer = $answersResults->read();
+
+                            // *** Get Survey Responses for this year ***
+                            $responsesResults = Yii::app()->db->createCommand("SELECT  `" . $questionDBColumnName
+                                . "`AS AnswerValue, COUNT(*) AS `Count` FROM {{survey_$surveyID}}
                         WHERE YEAR(submitdate) = $currentYear
                         GROUP BY `"
-                            . $questionDBColumnName . "`")->query();
+                                . $questionDBColumnName . "`")->query();
 
-                        //Holds current questions response data by year in a graph-able format
-                        $answerCount = array();
+                            //Holds current questions response data by year in a graph-able format
+                            $answerCount = array();
 
-                        //Loop through all returned user results
-                        $firstResponse = true;
-                        foreach ($responsesResults->readAll() as $responseRow) {
+                            //Loop through all returned user results
+                            $firstResponse = true;
+                            foreach ($responsesResults->readAll() as $responseRow) {
 
-                            // Must have this check for if the question was optional and has no answer result
-                            if ($responseRow['AnswerValue'] == "") {
-                                array_push($answerCount, array('A0' => (int)$responseRow['Count']));
-                            } else {
-                                if ($questionData['isOptional'] == 'true' && $firstResponse) {
-                                    array_push($answerCount, array('A0' => 0));
+                                // Must have this check for if the question was optional and has no answer result
+                                if ($responseRow['AnswerValue'] == "") {
+                                    array_push($answerCount, array('A0' => (int)$responseRow['Count']));
+                                } else {
+                                    if ($questionData['isOptional'] == 'true' && $firstResponse) {
+                                        array_push($answerCount, array('A0' => 0));
+                                    }
+                                    //Fill Data Holes until next answer has value
+                                    while ($responseRow['AnswerValue'] != $currentAnswer['AnswerValue'] && $currentAnswer) {
+                                        array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
+                                        if ($firstYear) {
+                                            array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
+                                        }
+                                        $currentAnswer = $answersResults->read();
+                                    }
+                                    //Push valid answer count and value if it exists
+                                    if ($currentAnswer) {
+                                        array_push($answerCount, array($currentAnswer['AnswerValue'] => (int)$responseRow['Count']));
+                                        if ($firstYear) {
+                                            array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
+                                        }
+                                    }
+                                    // Move to next answer result
+                                    $currentAnswer = $answersResults->read();
                                 }
-                                //Fill Data Holes until next answer has value
-                                while ($responseRow['AnswerValue'] != $currentAnswer['AnswerValue'] && $currentAnswer) {
+                                $firstResponse = false;
+                            }
+
+                            //Fill trailing data holes
+                            if ($currentAnswer) {
+                                array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
+                                if ($firstYear) {
+                                    array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
+                                }
+                                $currentAnswer = $answersResults->read();
+                                while ($currentAnswer) {
                                     array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
                                     if ($firstYear) {
                                         array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
                                     }
                                     $currentAnswer = $answersResults->read();
                                 }
-                                //Push valid answer count and value if it exists
-                                if ($currentAnswer) {
-                                    array_push($answerCount, array($currentAnswer['AnswerValue'] => (int)$responseRow['Count']));
-                                    if ($firstYear) {
-                                        array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
-                                    }
-                                }
-                                // Move to next answer result
-                                $currentAnswer = $answersResults->read();
                             }
-                            $firstResponse = false;
-                        }
 
-                        //Fill trailing data holes
-                        if ($currentAnswer) {
-                            array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
-                            if ($firstYear) {
-                                array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
-                            }
-                            $currentAnswer = $answersResults->read();
-                            while ($currentAnswer) {
-                                array_push($answerCount, array($currentAnswer['AnswerValue'] => 0));
-                                if ($firstYear) {
-                                    array_push($questionData['possibleAnswers'], $currentAnswer['AnswerText']);
-                                }
-                                $currentAnswer = $answersResults->read();
-                            }
+                            //Update question and survey data arrays
+                            $questionData['answerCount'][$currentYear] = array();
+                            $questionData['answerCount'][$currentYear]['year'] = $currentYear;
+                            array_push($questionData['answerCount'][$currentYear], $answerCount);
+                            $firstYear = false;
                         }
-
-                        //Update question and survey data arrays
-                        $questionData['answerCount'][$currentYear] = array();
-                        $questionData['answerCount'][$currentYear]['year'] = $currentYear;
-                        array_push($questionData['answerCount'][$currentYear], $answerCount);
-                        $firstYear = false;
+                        array_push($currentQuestionGroupData['questions'], $questionData);
                     }
-                    array_push($currentQuestionGroupData['questions'], $questionData);
+                    array_push($surveyData['questionGroups'], $currentQuestionGroupData);
+
                 }
-                array_push($surveyData['questionGroups'], $currentQuestionGroupData);
-
             }
-
             //Get total survey responses
             $surveyData['totalResponses'] = 0;
             //Just look at how many responses there were to the first question
