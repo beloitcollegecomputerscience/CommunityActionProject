@@ -25,9 +25,9 @@ Then you need to upload the files to your web server using an FTP program, such 
 
 * Using the FTP program, connect to your webserver. To do this you will need to know your **server name**, and the **username** and **password** for your server. These information should be available to you after you register for one of the hosting companies.
 
-* Copy the folder of the unzipped file with its directory structure into the `www` directory.  The uploading process will take a while.
+* Copy the folder of the unzipped file with its directory structure into the `www` directory.  The uploading process will take a while.  Be sure to set your program to binary mode (how to do this varies by program), or the upload won't work correctly!
 
-* When the files are successfully uploaded, you may need to change some permissions for some directories:
+* Once the files are successfully uploaded, you should change some permissions for these directories:
 
 	* The `/limesurvey/tmp` directory and all of its sub-directories and files are used for imports & uploads and should be set to _Read & Write_ for your webserver.
 
@@ -50,16 +50,19 @@ Then you need to upload the files to your web server using an FTP program, such 
 
 <p></p>
 
-* You can create a user and set their permission via the control panel of your hosting site. You will have access to your control panel after you register with a hosting company and you may be able to manage your database users under the database section (the specific layout varies between hosts).
+* Next, Limesurvey will need an empty database and a user.  You can create them (and set user permissions) through the control panel of the server, likely through a "MYSQL Databases" or similar button.
 
-* Now you can start to run the installation script by going to http://www.yourdomain.org/limesurvey/admin
+* The user Limesurvey will use will need a certain set of permissions.  Depending on the database type you're using, they'll need: 
+* * **MySQL:** SELECT, CREATE, INSERT, UPDATE, DELETE, ALTER, DROP, INDEX
+* **PostgreSQL:** SELECT, INSERT, UPDATE, DELETE, TRUNCATE, TRIGGER
 
-* If the configurations are all correct you would see the installation screen. follow the instruction and start installing.
+* Now you can start to run the installation script by going to the admin folder in your browser, or  http://www.yourdomain.org/limesurvey/admin.  If the installation is set up under a subdomain, be sure to replace "www." with "yoursubdomain."
 
-* LimeSurvey needs to connect to create its database and the tables inside it. If you have a dedicated database created on your server beforehand, you can type in the name. Otherwise, LimeSurvey will create a new database under that name. 
+* If the configurations are all correct you would see the installation screen. follow the instructions to start installing.
+* LimeSurvey needs to connect to the database to set up tables inside it & begin using it. If you have a dedicated database created on your server beforehand (as described above), you can type in the name. Otherwise, LimeSurvey will create a new database under that name. 
 
 * You will need the **username** and **password** for the desired user of your database during this process.
 
-* After the installation is done, you can use the same link, http://www.yourdomain.org/limesurvey/admin, to access your LimeSurvey login page!
+* After the installation is done, you can use the same link, http://www.yourdomain.org/limesurvey/admin, to access your LimeSurvey login page!  Use the same login and password as you did for the database user.
 
 
