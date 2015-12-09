@@ -29,7 +29,7 @@ Then you need to upload the files to your web server using an FTP program, such 
 
 * When the files are successfully uploaded, you may need to change some permissions for some directories:
 
-	* The `/limesurvey/tmp` directory and all of its sub-directories and files are used for imports & uploads and should be set to _Read & Write_ for your webserver.
+	* The  `/limesurvey/tmp` directory and all of its sub-directories and files are used for imports & uploads and should be set to _Read & Write_ for your webserver.
 
 	* The `/limesurvey/upload/` directory and all its sub-directories and files must also have _Read & Write_ for your webserver in order to enable picture and media files upload.
 
@@ -43,16 +43,22 @@ Then you need to upload the files to your web server using an FTP program, such 
 
 * For more information on Linux permissions, please see http://www.linux.com/learn/tutorials/309527-understanding-linux-file-permissions
 
-* LimeSurvey needs the **username** and **password** of a user of the database that it will use. So make sure that you have this information and that you use a user with the following permissions:
+<p></p>
+
+* Limesurvey needs a database to run on.  You can create a database with via the control panel of your hosting site. You will have access to your control panel after you register with a hosting company.
+* 
+* Once the database is made, LimeSurvey will need a user to run under.  You will need to have a **username** and **password** of a user of the database that it will use. To make sure that you have this information, you can create a user with the following permissions:
 
 	* **MySQL:** SELECT, CREATE, INSERT, UPDATE, DELETE, ALTER, DROP, INDEX
 	* **PostgreSQL:** SELECT, INSERT, UPDATE, DELETE, TRUNCATE, TRIGGER
 
-<p></p>
+* You should be able to manage your database users under the database section of your control panel (the specific layout varies between hosts).
 
-* You can create a user and set their permission via the control panel of your hosting site. You will have access to your control panel after you register with a hosting company and you may be able to manage your database users under the database section (the specific layout varies between hosts).
+* Now you can start to run the installation script by going to the admin directory in your browser.
+* (If the installation is in home/www/www/limesurvey, go to http://www.yourdomain.org/limesurvey/admin)
 
-* Now you can start to run the installation script by going to http://www.yourdomain.org/limesurvey/admin
+* If your installation sits in a subdomain you'll need to include that before yourdomain
+* (For example, if limesurvey is in home/www/survey/limesurvey, the url would be http://survey.yourdomain.org/limesurvey/admin)
 
 * If the configurations are all correct you would see the installation screen. follow the instruction and start installing.
 
@@ -61,5 +67,4 @@ Then you need to upload the files to your web server using an FTP program, such 
 * You will need the **username** and **password** for the desired user of your database during this process.
 
 * After the installation is done, you can use the same link, http://www.yourdomain.org/limesurvey/admin, to access your LimeSurvey login page!
-
 
